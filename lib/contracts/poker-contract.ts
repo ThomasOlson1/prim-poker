@@ -15,8 +15,9 @@ export const POKER_CONTRACT_ABI = [
   "function joinTable(uint256 tableId) payable",
   "function leaveTable(uint256 tableId)",
   "function startNewHand(uint256 tableId)",
-  "function addToPot(uint256 tableId, uint256 amount)",
+  "function addToPot(uint256 tableId, address player, uint256 amount)",
   "function distributeWinnings(uint256 tableId, address winner)",
+  "function setGameServer(address _gameServer)",
 
   // Events
   "event TableCreated(uint256 indexed tableId, uint256 smallBlind, uint256 bigBlind, uint256 minBuyIn)",
@@ -26,6 +27,7 @@ export const POKER_CONTRACT_ABI = [
   "event BlindsPosted(uint256 indexed tableId, address smallBlind, address bigBlind, uint256 gasFee)",
   "event WinnerPaid(uint256 indexed tableId, address indexed winner, uint256 amount)",
   "event GasFeeCollected(uint256 indexed tableId, uint256 amount)",
+  "event GameServerUpdated(address indexed oldServer, address indexed newServer)",
 ]
 
 export const POKER_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_POKER_CONTRACT_ADDRESS || ''
@@ -110,9 +112,9 @@ export class PokerContract {
   /**
    * Add chips to pot (bet/raise)
    */
-  async addToPot(tableId: string, amount: bigint): Promise<void> {
+  async addToPot(tableId: string, playerAddress: string, amount: bigint): Promise<void> {
     const contractWithSigner = this.contract.connect(this.signer)
-    const tx = await contractWithSigner.addToPot(tableId, amount)
+    const tx = await contractWithSigner.addToPot(tableId, playerAddress, amount)
     await tx.wait()
   }
 
@@ -122,6 +124,15 @@ export class PokerContract {
   async distributeWinnings(tableId: string, winner: string): Promise<void> {
     const contractWithSigner = this.contract.connect(this.signer)
     const tx = await contractWithSigner.distributeWinnings(tableId, winner)
+    await tx.wait()
+  }
+
+  /**
+   * Set the game server address (owner only)
+   */
+  async setGameServer(gameServerAddress: string): Promise<void> {
+    const contractWithSigner = this.contract.connect(this.signer)
+    const tx = await contractWithSigner.setGameServer(gameServerAddress)
     await tx.wait()
   }
 

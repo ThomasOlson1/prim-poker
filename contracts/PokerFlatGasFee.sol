@@ -29,6 +29,7 @@ contract PokerFlatGasFee {
     mapping(uint256 => Table) public tables;
     uint256 public tableCounter;
     address public owner;
+    address public gameServer;
 
     // Events
     event TableCreated(uint256 indexed tableId, uint256 smallBlind, uint256 bigBlind, uint256 minBuyIn);
@@ -38,6 +39,7 @@ contract PokerFlatGasFee {
     event BlindsPosted(uint256 indexed tableId, address smallBlind, address bigBlind, uint256 gasFee);
     event WinnerPaid(uint256 indexed tableId, address indexed winner, uint256 amount);
     event GasFeeCollected(uint256 indexed tableId, uint256 amount);
+    event GameServerUpdated(address indexed oldServer, address indexed newServer);
 
     constructor() {
         owner = msg.sender;
@@ -45,6 +47,11 @@ contract PokerFlatGasFee {
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Not owner");
+        _;
+    }
+
+    modifier onlyGameServer() {
+        require(msg.sender == gameServer, "Not game server");
         _;
     }
 
@@ -140,7 +147,7 @@ contract PokerFlatGasFee {
      * @dev Start a new hand - post blinds and extract gas fee
      * @param tableId Table ID
      */
-    function startNewHand(uint256 tableId) external {
+    function startNewHand(uint256 tableId) external onlyGameServer {
         Table storage table = tables[tableId];
 
         require(table.isActive, "Table not active");
@@ -182,15 +189,16 @@ contract PokerFlatGasFee {
     /**
      * @dev Add to pot (bets/raises during hand)
      * @param tableId Table ID
+     * @param player Player making the bet
      * @param amount Amount to add to pot
      */
-    function addToPot(uint256 tableId, uint256 amount) external {
+    function addToPot(uint256 tableId, address player, uint256 amount) external onlyGameServer {
         Table storage table = tables[tableId];
 
-        require(table.isSeated[msg.sender], "Not seated");
-        require(table.chips[msg.sender] >= amount, "Insufficient chips");
+        require(table.isSeated[player], "Not seated");
+        require(table.chips[player] >= amount, "Insufficient chips");
 
-        table.chips[msg.sender] -= amount;
+        table.chips[player] -= amount;
         table.pot += amount;
     }
 
@@ -199,7 +207,7 @@ contract PokerFlatGasFee {
      * @param tableId Table ID
      * @param winner Winner address
      */
-    function distributeWinnings(uint256 tableId, address winner) external {
+    function distributeWinnings(uint256 tableId, address winner) external onlyGameServer {
         Table storage table = tables[tableId];
 
         require(table.isSeated[winner], "Winner not seated");
@@ -325,5 +333,16 @@ contract PokerFlatGasFee {
     function transferOwnership(address newOwner) external onlyOwner {
         require(newOwner != address(0), "Invalid address");
         owner = newOwner;
+    }
+
+    /**
+     * @dev Set the game server address (only owner can call)
+     * @param _gameServer Address of the trusted game server
+     */
+    function setGameServer(address _gameServer) external onlyOwner {
+        require(_gameServer != address(0), "Invalid address");
+        address oldServer = gameServer;
+        gameServer = _gameServer;
+        emit GameServerUpdated(oldServer, _gameServer);
     }
 }

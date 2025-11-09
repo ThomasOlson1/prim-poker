@@ -1,0 +1,44 @@
+"use client"
+
+import { useEffect, useRef, useState } from "react"
+import { WebSocketService } from "@/lib/websocket-service"
+
+export function useWebSocket() {
+  const wsRef = useRef<WebSocketService | null>(null)
+  const [isConnected, setIsConnected] = useState(false)
+
+  useEffect(() => {
+    const ws = new WebSocketService()
+    wsRef.current = ws
+
+    ws.connect()
+      .then(() => setIsConnected(true))
+      .catch((error) => {
+        console.error("Failed to connect:", error)
+        setIsConnected(false)
+      })
+
+    return () => {
+      ws.disconnect()
+    }
+  }, [])
+
+  const subscribe = (gameId: string) => {
+    wsRef.current?.subscribeToGame(gameId)
+  }
+
+  const unsubscribe = (gameId: string) => {
+    wsRef.current?.unsubscribeFromGame(gameId)
+  }
+
+  const on = (eventType: string, handler: (data: any) => void) => {
+    return wsRef.current?.on(eventType, handler) || (() => {})
+  }
+
+  return {
+    isConnected,
+    subscribe,
+    unsubscribe,
+    on,
+  }
+}

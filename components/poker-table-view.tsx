@@ -31,7 +31,7 @@ interface GameState {
 }
 
 export function PokerTableView({
-  gameId,
+  gameId: _gameId,
   onLeaveGame,
   onExit,
   gameState,

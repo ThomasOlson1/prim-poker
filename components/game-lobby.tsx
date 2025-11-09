@@ -39,9 +39,9 @@ export function GameLobby({ games = [], onPlayGame, onNavigateToMyGames, onCreat
         <div className="mb-6 text-center">
           <div className="flex items-center justify-center gap-2 mb-2">
             <span className="text-4xl">♠</span>
-            <h1 className="text-3xl font-bold text-white">Prim's Poker</h1>
+            <h1 className="text-3xl font-bold text-white">Prim&apos;s Poker</h1>
           </div>
-          <p className="text-gray-400 text-sm">Texas Hold'em Cash Games</p>
+          <p className="text-gray-400 text-sm">Texas Hold&apos;em Cash Games</p>
         </div>
 
         <div className="bg-amber-900/40 border border-amber-600/50 rounded-lg p-3 mb-6 text-center">

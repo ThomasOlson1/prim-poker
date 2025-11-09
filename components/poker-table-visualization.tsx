@@ -22,8 +22,8 @@ interface PokerTableVisualizationProps {
   dealerButton: number
 }
 
-export function PokerTableVisualization({ players, pot, community, dealerButton }: PokerTableVisualizationProps) {
-  const positions = ["BTN", "SB", "BB", "UTG", "UTG+1", "MP"]
+export function PokerTableVisualization({ players, pot, community, dealerButton: _dealerButton }: PokerTableVisualizationProps) {
+  const _positions = ["BTN", "SB", "BB", "UTG", "UTG+1", "MP"]
 
   return (
     <Card className="bg-gradient-to-br from-green-900/20 to-slate-900/20 border-green-700/30 p-8 aspect-video">
@@ -50,7 +50,7 @@ export function PokerTableVisualization({ players, pot, community, dealerButton 
 
         {/* Players at Table */}
         <div className="flex-1 flex items-center justify-around">
-          {players.map((player, idx) => (
+          {players.map((player, _idx) => (
             <div
               key={player.id}
               className={`flex flex-col items-center gap-2 transition-all ${

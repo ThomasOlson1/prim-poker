@@ -62,7 +62,7 @@ export class PokerEngine {
     this.shuffleDeck()
 
     const gameState: GameState = {
-      players: players.map((p, i) => ({
+      players: players.map((p, _i) => ({
         ...p,
         hole: [],
         isActive: true,

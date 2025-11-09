@@ -32,20 +32,20 @@ export function PokerGameApp() {
 
   const handleCreateGame = (gameData: {
     name: string
-    buyIn: number
-    smallBlind: number
-    bigBlind: number
+    buyInEth: number
+    blindLevel: string
+    turnTimeMinutes: number
     maxPlayers: number
   }) => {
     const newGame = {
       id: `game-${Date.now()}`,
       name: gameData.name,
-      buyIn: gameData.buyIn,
-      blinds: `${gameData.smallBlind}/${gameData.bigBlind}`,
+      buyIn: gameData.buyInEth,
+      blinds: gameData.blindLevel,
       players: 1,
       maxPlayers: gameData.maxPlayers,
       timeRemaining: "Just started",
-      myStack: gameData.buyIn,
+      myStack: gameData.buyInEth,
     }
     setMyGames([newGame, ...myGames])
     setShowCreateModal(false)
@@ -61,7 +61,7 @@ export function PokerGameApp() {
   return (
     <>
       {currentScreen === "game" && selectedGameId ? (
-        <PokerTableView gameId={selectedGameId} onLeaveGame={handleLeaveGame} />
+        <PokerTableView gameId={selectedGameId} onLeaveGame={handleLeaveGame} onExit={handleLeaveGame} />
       ) : currentScreen === "myGames" ? (
         <MyGamesScreen games={myGames} onPlayGame={handlePlayGame} onNavigateHome={() => setCurrentScreen("home")} />
       ) : (

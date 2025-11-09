@@ -1,0 +1,206 @@
+[
+  {
+    "type": "constructor",
+    "inputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "GAS_FEE",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "addToPot",
+    "inputs": [
+      { "name": "tableId", "type": "uint256", "internalType": "uint256" },
+      { "name": "amount", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "createTable",
+    "inputs": [
+      { "name": "smallBlind", "type": "uint256", "internalType": "uint256" },
+      { "name": "bigBlind", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "distributeWinnings",
+    "inputs": [
+      { "name": "tableId", "type": "uint256", "internalType": "uint256" },
+      { "name": "winner", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "getPlayerInfo",
+    "inputs": [
+      { "name": "tableId", "type": "uint256", "internalType": "uint256" },
+      { "name": "player", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [
+      { "name": "chips", "type": "uint256", "internalType": "uint256" },
+      { "name": "isSeated", "type": "bool", "internalType": "bool" }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getPlayers",
+    "inputs": [{ "name": "tableId", "type": "uint256", "internalType": "uint256" }],
+    "outputs": [{ "name": "", "type": "address[9]", "internalType": "address[9]" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getTableInfo",
+    "inputs": [{ "name": "tableId", "type": "uint256", "internalType": "uint256" }],
+    "outputs": [
+      { "name": "smallBlind", "type": "uint256", "internalType": "uint256" },
+      { "name": "bigBlind", "type": "uint256", "internalType": "uint256" },
+      { "name": "minBuyIn", "type": "uint256", "internalType": "uint256" },
+      { "name": "numPlayers", "type": "uint8", "internalType": "uint8" },
+      { "name": "pot", "type": "uint256", "internalType": "uint256" },
+      { "name": "isActive", "type": "bool", "internalType": "bool" },
+      { "name": "handNumber", "type": "uint256", "internalType": "uint256" }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isViableStakes",
+    "inputs": [
+      { "name": "smallBlind", "type": "uint256", "internalType": "uint256" },
+      { "name": "bigBlind", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [
+      { "name": "viable", "type": "bool", "internalType": "bool" },
+      { "name": "reason", "type": "string", "internalType": "string" }
+    ],
+    "stateMutability": "pure"
+  },
+  {
+    "type": "function",
+    "name": "joinTable",
+    "inputs": [{ "name": "tableId", "type": "uint256", "internalType": "uint256" }],
+    "outputs": [],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "leaveTable",
+    "inputs": [{ "name": "tableId", "type": "uint256", "internalType": "uint256" }],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "startNewHand",
+    "inputs": [{ "name": "tableId", "type": "uint256", "internalType": "uint256" }],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "tableCounter",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "transferOwnership",
+    "inputs": [{ "name": "newOwner", "type": "address", "internalType": "address" }],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "withdrawFees",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "BlindsPosted",
+    "inputs": [
+      { "name": "tableId", "type": "uint256", "indexed": true, "internalType": "uint256" },
+      { "name": "smallBlind", "type": "address", "indexed": false, "internalType": "address" },
+      { "name": "bigBlind", "type": "address", "indexed": false, "internalType": "address" },
+      { "name": "gasFee", "type": "uint256", "indexed": false, "internalType": "uint256" }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "GasFeeCollected",
+    "inputs": [
+      { "name": "tableId", "type": "uint256", "indexed": true, "internalType": "uint256" },
+      { "name": "amount", "type": "uint256", "indexed": false, "internalType": "uint256" }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "HandStarted",
+    "inputs": [
+      { "name": "tableId", "type": "uint256", "indexed": true, "internalType": "uint256" },
+      { "name": "handNumber", "type": "uint256", "indexed": false, "internalType": "uint256" },
+      { "name": "pot", "type": "uint256", "indexed": false, "internalType": "uint256" }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "PlayerJoined",
+    "inputs": [
+      { "name": "tableId", "type": "uint256", "indexed": true, "internalType": "uint256" },
+      { "name": "player", "type": "address", "indexed": true, "internalType": "address" },
+      { "name": "buyIn", "type": "uint256", "indexed": false, "internalType": "uint256" },
+      { "name": "seatIndex", "type": "uint8", "indexed": false, "internalType": "uint8" }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "PlayerLeft",
+    "inputs": [
+      { "name": "tableId", "type": "uint256", "indexed": true, "internalType": "uint256" },
+      { "name": "player", "type": "address", "indexed": true, "internalType": "address" },
+      { "name": "cashOut", "type": "uint256", "indexed": false, "internalType": "uint256" }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "TableCreated",
+    "inputs": [
+      { "name": "tableId", "type": "uint256", "indexed": true, "internalType": "uint256" },
+      { "name": "smallBlind", "type": "uint256", "indexed": false, "internalType": "uint256" },
+      { "name": "bigBlind", "type": "uint256", "indexed": false, "internalType": "uint256" },
+      { "name": "minBuyIn", "type": "uint256", "indexed": false, "internalType": "uint256" }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "WinnerPaid",
+    "inputs": [
+      { "name": "tableId", "type": "uint256", "indexed": true, "internalType": "uint256" },
+      { "name": "winner", "type": "address", "indexed": true, "internalType": "address" },
+      { "name": "amount", "type": "uint256", "indexed": false, "internalType": "uint256" }
+    ],
+    "anonymous": false
+  }
+]

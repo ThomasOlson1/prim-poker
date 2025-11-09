@@ -72,7 +72,7 @@ export class GameService {
     playerId: string,
     action: "fold" | "check" | "call" | "raise" | "all-in",
     amount?: number,
-  ): Promise<{ success: boolean; gameState?: GameState }> {
+  ): Promise<{ success: boolean; gameState?: GameState | null }> {
     if (this.mockMode) {
       return this.mockSubmitAction(gameId, playerId, action, amount)
     }

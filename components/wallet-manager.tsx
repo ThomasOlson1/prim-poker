@@ -13,7 +13,7 @@ interface WalletState {
 }
 
 export function WalletManager() {
-  const [wallet, setWallet] = useState<WalletState>({
+  const [wallet, _setWallet] = useState<WalletState>({
     address: null,
     balance: null,
     isConnected: false,
@@ -22,16 +22,18 @@ export function WalletManager() {
   useEffect(() => {
     const connectWallet = async () => {
       try {
-        // Request wallet connection through Farcaster SDK
-        const walletAddress = await sdk.actions.requestAddressSignMessage("Sign in to Poker Dapp")
+        // TODO: Implement proper wallet connection through Farcaster SDK
+        // The requestAddressSignMessage API is not available in current SDK version
+        console.log("Wallet connection pending SDK update", sdk)
 
-        if (walletAddress) {
-          setWallet({
-            address: walletAddress,
-            balance: "0.00", // Fetch actual balance from blockchain
-            isConnected: true,
-          })
-        }
+        // Placeholder for development
+        // if (walletAddress) {
+        //   setWallet({
+        //     address: walletAddress,
+        //     balance: "0.00",
+        //     isConnected: true,
+        //   })
+        // }
       } catch (error) {
         console.error("Wallet connection failed:", error)
       }

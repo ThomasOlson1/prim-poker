@@ -56,15 +56,13 @@ export class PokerContract {
     this.signer = signer
   }
 
-  /**
-   * Create a new poker table
-   */
   async createTable(smallBlind: bigint, bigBlind: bigint): Promise<string> {
     const contractWithSigner = this.contract.connect(this.signer)
-    const tx = await contractWithSigner.createTable(smallBlind, bigBlind)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tx = await (contractWithSigner as any).createTable(smallBlind, bigBlind)
     const receipt = await tx.wait()
 
-    // Parse TableCreated event to get tableId
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const event = receipt.logs.find((log: any) => {
       try {
         const parsed = this.contract.interface.parseLog(log)
@@ -82,65 +80,51 @@ export class PokerContract {
     throw new Error('Failed to get table ID from transaction')
   }
 
-  /**
-   * Join a table with buy-in
-   */
   async joinTable(tableId: string, buyIn: bigint): Promise<void> {
     const contractWithSigner = this.contract.connect(this.signer)
-    const tx = await contractWithSigner.joinTable(tableId, { value: buyIn })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tx = await (contractWithSigner as any).joinTable(tableId, { value: buyIn })
     await tx.wait()
   }
 
-  /**
-   * Leave table and cash out
-   */
   async leaveTable(tableId: string): Promise<void> {
     const contractWithSigner = this.contract.connect(this.signer)
-    const tx = await contractWithSigner.leaveTable(tableId)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tx = await (contractWithSigner as any).leaveTable(tableId)
     await tx.wait()
   }
 
-  /**
-   * Start a new hand
-   */
   async startNewHand(tableId: string): Promise<void> {
     const contractWithSigner = this.contract.connect(this.signer)
-    const tx = await contractWithSigner.startNewHand(tableId)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tx = await (contractWithSigner as any).startNewHand(tableId)
     await tx.wait()
   }
 
-  /**
-   * Add chips to pot (bet/raise)
-   */
   async addToPot(tableId: string, playerAddress: string, amount: bigint): Promise<void> {
     const contractWithSigner = this.contract.connect(this.signer)
-    const tx = await contractWithSigner.addToPot(tableId, playerAddress, amount)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tx = await (contractWithSigner as any).addToPot(tableId, playerAddress, amount)
     await tx.wait()
   }
 
-  /**
-   * Distribute winnings to winner
-   */
   async distributeWinnings(tableId: string, winner: string): Promise<void> {
     const contractWithSigner = this.contract.connect(this.signer)
-    const tx = await contractWithSigner.distributeWinnings(tableId, winner)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tx = await (contractWithSigner as any).distributeWinnings(tableId, winner)
     await tx.wait()
   }
 
-  /**
-   * Set the game server address (owner only)
-   */
   async setGameServer(gameServerAddress: string): Promise<void> {
     const contractWithSigner = this.contract.connect(this.signer)
-    const tx = await contractWithSigner.setGameServer(gameServerAddress)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tx = await (contractWithSigner as any).setGameServer(gameServerAddress)
     await tx.wait()
   }
 
-  /**
-   * Get table information
-   */
   async getTableInfo(tableId: string): Promise<TableInfo> {
-    const result = await this.contract.getTableInfo(tableId)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await (this.contract as any).getTableInfo(tableId)
     return {
       smallBlind: result.smallBlind,
       bigBlind: result.bigBlind,
@@ -152,57 +136,46 @@ export class PokerContract {
     }
   }
 
-  /**
-   * Get player information at table
-   */
   async getPlayerInfo(tableId: string, playerAddress: string): Promise<PlayerInfo> {
-    const result = await this.contract.getPlayerInfo(tableId, playerAddress)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await (this.contract as any).getPlayerInfo(tableId, playerAddress)
     return {
       chips: result.chips,
       isSeated: result.isSeated,
     }
   }
 
-  /**
-   * Get all players at table
-   */
   async getPlayers(tableId: string): Promise<string[]> {
-    const players = await this.contract.getPlayers(tableId)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const players = await (this.contract as any).getPlayers(tableId)
     return players.filter((addr: string) => addr !== ethers.ZeroAddress)
   }
 
-  /**
-   * Check if stakes are viable
-   */
   async isViableStakes(smallBlind: bigint, bigBlind: bigint): Promise<{ viable: boolean; reason: string }> {
-    const result = await this.contract.isViableStakes(smallBlind, bigBlind)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await (this.contract as any).isViableStakes(smallBlind, bigBlind)
     return {
       viable: result.viable,
       reason: result.reason,
     }
   }
 
-  /**
-   * Get gas fee constant
-   */
   async getGasFee(): Promise<bigint> {
-    return await this.contract.GAS_FEE()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return await (this.contract as any).GAS_FEE()
   }
 
-  /**
-   * Get total number of tables
-   */
   async getTableCounter(): Promise<bigint> {
-    return await this.contract.tableCounter()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return await (this.contract as any).tableCounter()
   }
 
-  /**
-   * Listen to contract events
-   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   on(eventName: string, callback: (...args: any[]) => void) {
     this.contract.on(eventName, callback)
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   off(eventName: string, callback: (...args: any[]) => void) {
     this.contract.off(eventName, callback)
   }

@@ -1,9 +1,9 @@
-type EventHandler = (data: any) => void
+type EventHandler = (data: unknown) => void
 
 interface GameEvent {
   type: "player-turn" | "action-taken" | "game-state-update" | "player-joined" | "game-started" | "game-ended"
   gameId: string
-  data: any
+  data: unknown
   timestamp: number
 }
 
@@ -85,7 +85,7 @@ export class WebSocketService {
   /**
    * Send message to server
    */
-  send(data: any): void {
+  send(data: unknown): void {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(data))
     } else {

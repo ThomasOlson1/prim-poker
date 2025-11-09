@@ -94,7 +94,7 @@ export function BettingControls({
                 </div>
                 <Slider
                   value={[betAmount]}
-                  onValueChange={(val) => setBetAmount(val[0])}
+                  onValueChange={(val: number[]) => setBetAmount(val[0])}
                   min={minBet}
                   max={maxBet}
                   step={5}

@@ -15,7 +15,7 @@ interface GameTableProps {
 interface Player {
   id: string
   name: string
-  chips: number
+  stack: number
   position: string
   bet: number
   isActive: boolean
@@ -23,14 +23,14 @@ interface Player {
   hole?: string[]
 }
 
-export function GameTable({ gameId, isCreator }: GameTableProps) {
-  const [gameStatus, setGameStatus] = useState<"waiting" | "running" | "completed">("waiting")
+export function GameTable({ gameId: _gameId, isCreator: _isCreator }: GameTableProps) {
+  const [gameStatus, _setGameStatus] = useState<"waiting" | "running" | "completed">("waiting")
   const [gameStage, setGameStage] = useState<"preflop" | "flop" | "turn" | "river" | "showdown">("preflop")
   const [players, setPlayers] = useState<Player[]>([
     {
       id: "1",
       name: "You",
-      chips: 1000,
+      stack: 1000,
       position: "BTN",
       bet: 0,
       isActive: true,
@@ -40,7 +40,7 @@ export function GameTable({ gameId, isCreator }: GameTableProps) {
     {
       id: "2",
       name: "Player 2",
-      chips: 800,
+      stack: 800,
       position: "SB",
       bet: 50,
       isActive: true,
@@ -49,7 +49,7 @@ export function GameTable({ gameId, isCreator }: GameTableProps) {
     {
       id: "3",
       name: "Player 3",
-      chips: 1200,
+      stack: 1200,
       position: "BB",
       bet: 100,
       isActive: true,
@@ -58,7 +58,7 @@ export function GameTable({ gameId, isCreator }: GameTableProps) {
   ])
   const [pot, setPot] = useState(150)
   const [community, setCommunity] = useState<string[]>([])
-  const [turnTimer, setTurnTimer] = useState(3600)
+  const [turnTimer, _setTurnTimer] = useState(3600)
   const [currentBet, setCurrentBet] = useState(100)
 
   const handleFold = () => {
@@ -96,7 +96,7 @@ export function GameTable({ gameId, isCreator }: GameTableProps) {
     })
   }
 
-  const handleProgressStage = () => {
+  const _handleProgressStage = () => {
     switch (gameStage) {
       case "preflop":
         setCommunity(["2H", "3D", "5C"])
@@ -181,7 +181,7 @@ export function GameTable({ gameId, isCreator }: GameTableProps) {
         <Card className="bg-slate-800 border-purple-500/20 p-6">
           <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
             <DollarSign className="w-5 h-5" />
-            Texas Hold'em Info
+            Texas Hold&apos;em Info
           </h3>
           <div className="space-y-3 text-sm">
             <div className="flex justify-between">

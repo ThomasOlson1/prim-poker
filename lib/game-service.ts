@@ -135,34 +135,34 @@ export class GameService {
     }
   }
 
-  private mockCreateGame(params: any) {
+  private mockCreateGame(_params: unknown) {
     return Promise.resolve({
       gameId: `game_${Date.now()}`,
       success: true,
     })
   }
 
-  private mockJoinGame(gameId: string, playerId: string, buyIn: number) {
+  private mockJoinGame(gameId: string, _playerId: string, _buyIn: number) {
     return Promise.resolve({
       success: true,
       message: `Successfully joined game ${gameId}`,
     })
   }
 
-  private mockSubmitAction(gameId: string, playerId: string, action: string, amount?: number) {
+  private mockSubmitAction(_gameId: string, _playerId: string, _action: string, _amount?: number) {
     return Promise.resolve({
       success: true,
       gameState: this.pokerEngine.getGameState(),
     })
   }
 
-  private mockGetGame(gameId: string) {
+  private mockGetGame(_gameId: string) {
     return Promise.resolve({
       gameState: this.pokerEngine.getGameState(),
     })
   }
 
-  private mockListGames(filters?: any) {
+  private mockListGames(_filters?: unknown) {
     return Promise.resolve([
       {
         id: "1",

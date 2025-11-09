@@ -6,13 +6,24 @@ interface UseGameTimerProps {
   duration: number // in seconds
   onExpire: () => void
   isActive: boolean
+  serverTimeLeft?: number // Sync with server
 }
 
-export function useGameTimer({ duration, onExpire, isActive }: UseGameTimerProps) {
+export function useGameTimer({ duration, onExpire, isActive, serverTimeLeft }: UseGameTimerProps) {
   const [timeRemaining, setTimeRemaining] = useState(duration)
 
+  // Sync with server time when received
   useEffect(() => {
-    if (!isActive) return
+    if (serverTimeLeft !== undefined) {
+      setTimeRemaining(serverTimeLeft)
+    }
+  }, [serverTimeLeft])
+
+  useEffect(() => {
+    if (!isActive) {
+      setTimeRemaining(duration)
+      return
+    }
 
     const interval = setInterval(() => {
       setTimeRemaining((prev) => {

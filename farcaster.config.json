@@ -1,12 +1,12 @@
 {
-  "name": "Farcaster Poker",
+  "name": "Prim's Poker",
   "description": "Turn-based poker mini dapp with variable timing and real-time notifications",
   "version": "1.0.0",
   "icon": "/icon.svg",
   "hero": "/hero-poker.jpg",
   "ogImage": "/og-image.jpg",
   "manifest": {
-    "name": "Farcaster Poker",
+    "name": "Prim's Poker",
     "short_name": "Poker",
     "start_url": "/",
     "display": "standalone",

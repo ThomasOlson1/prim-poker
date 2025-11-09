@@ -2,11 +2,11 @@ import { sdk } from "@farcaster/miniapp-sdk"
 
 export interface FarcasterUser {
   fid: number
-  username: string
-  displayName: string
-  pfpUrl: string
-  profile: {
-    bio: string
+  username?: string
+  displayName?: string
+  pfpUrl?: string
+  profile?: {
+    bio?: string
   }
 }
 
@@ -31,7 +31,6 @@ export class FarcasterService {
         username: context.user.username,
         displayName: context.user.displayName,
         pfpUrl: context.user.pfpUrl,
-        profile: context.user.profile,
       }
     } catch (error) {
       console.error("Failed to get user context:", error)
@@ -53,11 +52,14 @@ export class FarcasterService {
 
   /**
    * Request signature for transaction
+   * TODO: Implement when SDK supports this method
    */
-  static async requestSignature(message: string): Promise<string | null> {
+  static async requestSignature(_message: string): Promise<string | null> {
     try {
-      const signature = await sdk.actions.requestAddressSignMessage(message)
-      return signature
+      // const signature = await sdk.actions.requestAddressSignMessage(message)
+      // return signature
+      console.log("Signature request not yet implemented in SDK")
+      return null
     } catch (error) {
       console.error("Failed to request signature:", error)
       return null

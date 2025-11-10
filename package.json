@@ -106,7 +106,7 @@
     "eslint": "^9",
     "eslint-config-next": "15.3.4",
     "ethers": "^6.15.0",
-    "hardhat": "^2.27.0",
+    "hardhat": "2.19.5",
     "hardhat-gas-reporter": "^2.3.0",
     "postcss": "^8.5.6",
     "solidity-coverage": "^0.8.16",

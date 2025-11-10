@@ -108,6 +108,7 @@
     "hardhat": "2.19.5",
     "hardhat-gas-reporter": "^2.3.0",
     "postcss": "^8.5.6",
+    "solc": "^0.8.20",
     "solidity-coverage": "^0.8.16",
     "tailwindcss": "^4.1.17",
     "ts-node": "^10.9.2",

@@ -28,7 +28,7 @@ export interface TurnTimerUpdate {
 }
 
 export function useGameWebSocket(gameId: string | null) {
-  const { isConnected, subscribe, unsubscribe, on } = useWebSocket()
+  const { isConnected, subscribe, unsubscribe, on, send } = useWebSocket()
   const { address } = useAccount()
   const [gameState, setGameState] = useState<GameStateFromServer | null>(null)
   const [turnTimer, setTurnTimer] = useState<TurnTimerUpdate | null>(null)
@@ -103,10 +103,26 @@ export function useGameWebSocket(gameId: string | null) {
     }
   }, [isConnected, address, on])
 
+  // Send player action to backend
+  const sendAction = useCallback((action: string, amount?: number) => {
+    if (!isConnected || !gameId) {
+      console.warn('Cannot send action: not connected or no gameId')
+      return
+    }
+
+    console.log(`🎯 Sending action to server: ${action}`, amount)
+    send({
+      type: 'action',
+      action,
+      amount
+    })
+  }, [isConnected, gameId, send])
+
   return {
     gameState,
     turnTimer,
     isMyTurn,
     isConnected,
+    sendAction,
   }
 }

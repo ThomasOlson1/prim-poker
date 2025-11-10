@@ -161,7 +161,7 @@ export class GameRoom {
     this.startTurnTimer()
   }
 
-  handleAction(playerAddress: string, action: string, amount?: number) {
+  async handleAction(playerAddress: string, action: string, amount?: number) {
     if (this.currentPlayer !== playerAddress) {
       console.log('❌ Not player\'s turn:', playerAddress)
       return
@@ -195,6 +195,17 @@ export class GameRoom {
           player.bet += amount
           player.stack -= amount
           this.gameState.pot += amount
+
+          // Update contract pot
+          if (this.contractService) {
+            try {
+              const amountWei = ethers.parseEther(amount.toString())
+              await this.contractService.addToPot(this.gameId, playerAddress, amountWei)
+              console.log(`⛓️  Added ${amount} ETH to contract pot`)
+            } catch (error) {
+              console.log(`⚠️  Could not add to contract pot:`, error)
+            }
+          }
         }
         break
 
@@ -203,6 +214,17 @@ export class GameRoom {
           player.bet = amount
           player.stack -= amount
           this.gameState.pot += amount
+
+          // Update contract pot
+          if (this.contractService) {
+            try {
+              const amountWei = ethers.parseEther(amount.toString())
+              await this.contractService.addToPot(this.gameId, playerAddress, amountWei)
+              console.log(`⛓️  Added ${amount} ETH to contract pot`)
+            } catch (error) {
+              console.log(`⚠️  Could not add to contract pot:`, error)
+            }
+          }
         }
         break
 
@@ -211,6 +233,17 @@ export class GameRoom {
         player.bet += allInAmount
         player.stack = 0
         this.gameState.pot += allInAmount
+
+        // Update contract pot
+        if (this.contractService && allInAmount > 0) {
+          try {
+            const amountWei = ethers.parseEther(allInAmount.toString())
+            await this.contractService.addToPot(this.gameId, playerAddress, amountWei)
+            console.log(`⛓️  Added ${allInAmount} ETH to contract pot (all-in)`)
+          } catch (error) {
+            console.log(`⚠️  Could not add to contract pot:`, error)
+          }
+        }
         break
     }
 

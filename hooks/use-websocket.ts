@@ -35,10 +35,15 @@ export function useWebSocket() {
     return wsRef.current?.on(eventType, handler) || (() => {})
   }
 
+  const send = (data: any) => {
+    wsRef.current?.send(data)
+  }
+
   return {
     isConnected,
     subscribe,
     unsubscribe,
     on,
+    send,
   }
 }

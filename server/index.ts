@@ -100,7 +100,7 @@ wss.on('connection', (ws, req) => {
         case 'action':
           if (currentGameId && playerAddress) {
             const room = gameRooms.get(currentGameId)
-            room?.handleAction(playerAddress, message.action, message.amount)
+            await room?.handleAction(playerAddress, message.action, message.amount)
           }
           break
 

@@ -31,7 +31,7 @@ export function PokerTableView({
   const { playerInfo, loading: loadingPlayerInfo } = usePlayerInfo(gameId, address)
 
   // WebSocket connection for real-time game state
-  const { gameState: wsGameState, isMyTurn, isConnected } = useGameWebSocket(gameId)
+  const { gameState: wsGameState, isMyTurn, isConnected, sendAction } = useGameWebSocket(gameId)
 
   // Join table hook
   const { joinTable, loading: joiningTable } = useJoinTable()
@@ -180,17 +180,68 @@ export function PokerTableView({
   }
 
   const handleCall = () => {
-    console.log("[v0] Call/Check action triggered")
+    if (!isMyTurn) {
+      toast({
+        title: "Not Your Turn",
+        description: "Please wait for your turn to act",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Check if there's a bet to call
+    const currentBet = wsGameState?.players[address!]?.bet || 0
+    const highestBet = Math.max(...Object.values(wsGameState?.players || {}).map(p => p.bet))
+
+    if (highestBet > currentBet) {
+      // There's a bet to call
+      const callAmount = highestBet - currentBet
+      console.log("📞 Calling bet of:", callAmount)
+      sendAction('call', callAmount)
+    } else {
+      // No bet, so check
+      console.log("✓ Checking")
+      sendAction('check')
+    }
     setSelectedBet(null)
   }
 
   const handleRaise = () => {
-    console.log("[v0] Raise action triggered with bet:", selectedBet)
+    if (!isMyTurn) {
+      toast({
+        title: "Not Your Turn",
+        description: "Please wait for your turn to act",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!selectedBet || selectedBet <= 0) {
+      toast({
+        title: "Invalid Bet",
+        description: "Please select a bet amount",
+        variant: "destructive",
+      })
+      return
+    }
+
+    console.log("📈 Raising to:", selectedBet)
+    sendAction('raise', selectedBet)
     setSelectedBet(null)
   }
 
   const handleFold = () => {
-    console.log("[v0] Fold action triggered")
+    if (!isMyTurn) {
+      toast({
+        title: "Not Your Turn",
+        description: "Please wait for your turn to act",
+        variant: "destructive",
+      })
+      return
+    }
+
+    console.log("🚫 Folding")
+    sendAction('fold')
   }
 
   return (

@@ -4,7 +4,7 @@ interface GameEvent {
   type: string
   gameId?: string
   timestamp: number
-  [key: string]: any  // Allow any additional fields from server
+  [key: string]: unknown  // Allow any additional fields from server
 }
 
 export class WebSocketService {

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { PokerGameApp } from "@/components/poker-game-app"
+import { MiniappSavePrompt } from "@/components/miniapp-save-prompt"
 
 export default function Home() {
   const [isReady, setIsReady] = useState(false)
@@ -26,6 +27,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       <PokerGameApp />
+      <MiniappSavePrompt />
     </div>
   )
 }

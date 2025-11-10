@@ -5,7 +5,7 @@ import { PokerTableView } from "./poker-table-view"
 import { GameLobby } from "./game-lobby"
 import { MyGamesScreen } from "./my-games-screen"
 import { CreateGameModal } from "./create-game-modal"
-import { useCreateTable } from "@/hooks/use-poker-contract"
+import { useCreateTable, useEthPrice } from "@/hooks/use-poker-contract"
 import { useToast } from "@/hooks/use-toast"
 import { ethers } from "ethers"
 
@@ -16,6 +16,7 @@ export function PokerGameApp() {
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const { createTable, loading: creatingTable } = useCreateTable()
+  const { ethPrice } = useEthPrice()
   const { toast } = useToast()
 
   const handlePlayGame = (gameId: string) => {
@@ -31,13 +32,23 @@ export function PokerGameApp() {
     maxPlayers: number
   }) => {
     try {
-      // Parse blinds (e.g., "0.5/1" -> smallBlind: 0.5, bigBlind: 1)
-      const [smallBlindStr, bigBlindStr] = gameData.blindLevel.split("/")
-      const smallBlind = ethers.parseEther(smallBlindStr.trim())
-      const bigBlind = ethers.parseEther(bigBlindStr.trim())
+      if (!ethPrice) {
+        throw new Error("ETH price not loaded. Please wait a moment and try again.")
+      }
+
+      // Parse blinds (e.g., "0.5/1" -> smallBlind: $0.5, bigBlind: $1)
+      const [smallBlindUsd, bigBlindUsd] = gameData.blindLevel.split("/").map(s => parseFloat(s.trim()))
+
+      // Convert USD to ETH
+      const smallBlindEth = smallBlindUsd / ethPrice
+      const bigBlindEth = bigBlindUsd / ethPrice
+
+      // Convert to Wei (smallest ETH unit)
+      const smallBlind = ethers.parseEther(smallBlindEth.toString())
+      const bigBlind = ethers.parseEther(bigBlindEth.toString())
 
       console.log("🎲 Creating table on contract...")
-      console.log(`   Blinds: ${smallBlindStr}/${bigBlindStr} ETH`)
+      console.log(`   Blinds: $${smallBlindUsd}/$${bigBlindUsd} (${smallBlindEth.toFixed(6)}/${bigBlindEth.toFixed(6)} ETH)`)
 
       // Call smart contract to create table
       const tableId = await createTable(smallBlind, bigBlind)

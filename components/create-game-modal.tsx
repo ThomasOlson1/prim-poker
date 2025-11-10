@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { useEthPrice } from "@/hooks/use-poker-contract"
 
 interface CreateGameModalProps {
   onClose: () => void
@@ -22,19 +23,36 @@ export function CreateGameModal({ onClose, onCreate, loading }: CreateGameModalP
   const [blindLevel, setBlindLevel] = useState("1/2")
   const [turnTimeMinutes, setTurnTimeMinutes] = useState(3)
   const [maxPlayers, setMaxPlayers] = useState(6)
+  const { ethPrice } = useEthPrice()
+
+  // Convert dollar amount to ETH
+  const dollarToEth = (dollars: number): number => {
+    if (!ethPrice) return dollars // Fallback if price not loaded
+    return dollars / ethPrice
+  }
+
+  // Format ETH amount for display
+  const formatEth = (dollars: number): string => {
+    const eth = dollarToEth(dollars)
+    if (eth >= 0.01) {
+      return eth.toFixed(4)
+    } else {
+      return eth.toFixed(6)
+    }
+  }
 
   const BLIND_LEVELS = [
-    { value: "0.01/0.02", display: "$0.01/$0.02 (0.01 ETH/0.02 ETH)" },
-    { value: "0.05/0.1", display: "$0.05/$0.10 (0.05 ETH/0.10 ETH)" },
-    { value: "0.1/0.2", display: "$0.10/$0.20 (0.10 ETH/0.20 ETH)" },
-    { value: "0.5/1", display: "$0.50/$1 (0.50 ETH/1 ETH)" },
-    { value: "1/2", display: "$1/$2 (1 ETH/2 ETH)" },
-    { value: "2/5", display: "$2/$5 (2 ETH/5 ETH)" },
-    { value: "5/10", display: "$5/$10 (5 ETH/10 ETH)" },
-    { value: "10/20", display: "$10/$20 (10 ETH/20 ETH)" },
-    { value: "25/50", display: "$25/$50 (25 ETH/50 ETH)" },
-    { value: "50/100", display: "$50/$100 (50 ETH/100 ETH)" },
-    { value: "100/200", display: "$100/$200 (100 ETH/200 ETH)" },
+    { value: "0.01/0.02", smallBlind: 0.01, bigBlind: 0.02 },
+    { value: "0.05/0.1", smallBlind: 0.05, bigBlind: 0.1 },
+    { value: "0.1/0.2", smallBlind: 0.1, bigBlind: 0.2 },
+    { value: "0.5/1", smallBlind: 0.5, bigBlind: 1 },
+    { value: "1/2", smallBlind: 1, bigBlind: 2 },
+    { value: "2/5", smallBlind: 2, bigBlind: 5 },
+    { value: "5/10", smallBlind: 5, bigBlind: 10 },
+    { value: "10/20", smallBlind: 10, bigBlind: 20 },
+    { value: "25/50", smallBlind: 25, bigBlind: 50 },
+    { value: "50/100", smallBlind: 50, bigBlind: 100 },
+    { value: "100/200", smallBlind: 100, bigBlind: 200 },
   ]
 
   // Calculate buy-in constraints based on blind level (50bb-200bb)
@@ -110,10 +128,15 @@ export function CreateGameModal({ onClose, onCreate, loading }: CreateGameModalP
             >
               {BLIND_LEVELS.map((level) => (
                 <option key={level.value} value={level.value}>
-                  {level.display}
+                  ${level.value} ({formatEth(level.smallBlind)}/{formatEth(level.bigBlind)} ETH)
                 </option>
               ))}
             </select>
+            {ethPrice && (
+              <div className="text-xs text-gray-500 mt-1">
+                1 USD = {(1 / ethPrice).toFixed(6)} ETH (ETH @ ${ethPrice.toFixed(2)})
+              </div>
+            )}
           </div>
 
           {/* Turn Time */}

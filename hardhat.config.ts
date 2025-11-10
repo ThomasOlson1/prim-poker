@@ -1,8 +1,9 @@
 import { HardhatUserConfig } from "hardhat/config"
 import "@nomicfoundation/hardhat-toolbox"
+import { config as dotenvConfig } from "dotenv"
 
 // Load environment variables
-require("dotenv").config()
+dotenvConfig()
 
 const config: HardhatUserConfig = {
   solidity: {

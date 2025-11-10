@@ -93,11 +93,14 @@ export class PokerEngine {
 
   /**
    * Initialize a new Texas Hold'em game
+   * @param players Array of players
+   * @param vrfSeed Optional Chainlink VRF seed for verifiable shuffle (0 = use Math.random)
    */
   initializeGame(
     players: Omit<Player, "hole" | "isActive" | "hasFolded" | "currentBet" | "totalBetThisRound">[],
+    vrfSeed?: bigint | number
   ): GameState {
-    this.shuffleDeck()
+    this.shuffleDeck(vrfSeed)
 
     const gameState: GameState = {
       players: players.map((p, _i) => ({
@@ -160,9 +163,25 @@ export class PokerEngine {
   }
 
   /**
-   * Shuffle deck using Fisher-Yates algorithm
+   * Seeded random number generator (LCG - Linear Congruential Generator)
+   * Used for deterministic, verifiable shuffles from Chainlink VRF seed
    */
-  private shuffleDeck(): void {
+  private seededRandom(seed: bigint | number): () => number {
+    let state = typeof seed === 'bigint' ? Number(seed % BigInt(2**32)) : seed
+    return function() {
+      // LCG parameters (from Numerical Recipes)
+      state = (state * 1664525 + 1013904223) % (2**32)
+      return state / (2**32)
+    }
+  }
+
+  /**
+   * Shuffle deck using Fisher-Yates algorithm
+   * @param vrfSeed Optional Chainlink VRF seed for verifiable shuffle
+   * If seed provided: deterministic shuffle (same seed = same deck order)
+   * If no seed: uses Math.random() (for testing only - NOT SECURE for production)
+   */
+  private shuffleDeck(vrfSeed?: bigint | number): void {
     this.deck = []
     const suits: Suit[] = ["H", "D", "C", "S"]
     const ranks: Rank[] = ["A", "K", "Q", "J", "10", "9", "8", "7", "6", "5", "4", "3", "2"]
@@ -173,8 +192,12 @@ export class PokerEngine {
       }
     }
 
+    // Use seeded RNG if VRF seed provided, otherwise fallback to Math.random
+    const random = vrfSeed ? this.seededRandom(vrfSeed) : Math.random
+
+    // Fisher-Yates shuffle with seeded randomness
     for (let i = this.deck.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1))
+      const j = Math.floor(random() * (i + 1))
       ;[this.deck[i], this.deck[j]] = [this.deck[j], this.deck[i]]
     }
   }
@@ -552,11 +575,12 @@ export class PokerEngine {
 
   /**
    * Reset for new hand
+   * @param vrfSeed Optional Chainlink VRF seed for verifiable shuffle
    */
-  resetHand(): void {
+  resetHand(vrfSeed?: bigint | number): void {
     if (!this.gameState) return
 
-    this.shuffleDeck()
+    this.shuffleDeck(vrfSeed)
 
     // Clear previous hand data
     for (const player of this.gameState.players) {

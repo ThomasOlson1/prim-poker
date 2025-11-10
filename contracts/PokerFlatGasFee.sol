@@ -1,18 +1,24 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
+import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
+
 /**
  * @title PokerFlatGasFee
- * @dev Texas Hold'em Poker with dynamic gas fee model
- * Gas fee = (estimated gas cost) + markup to cover fluctuations
+ * @dev Texas Hold'em Poker with dynamic gas fee model + Chainlink VRF for verifiable randomness
+ * Total fee = (gas cost) + (Chainlink VRF cost) + markup ($0.20)
  */
-contract PokerFlatGasFee {
+contract PokerFlatGasFee is VRFConsumerBaseV2Plus {
 
     // DYNAMIC GAS FEE MODEL
     // Estimated gas units needed for distributeWinnings + other ops
     uint256 public estimatedGasUnits = 60000; // ~60k gas for typical hand completion
 
-    // Markup in wei to add on top of gas costs (can be set to ~$0.20 worth of ETH)
+    // Chainlink VRF cost per request (varies by chain, ~0.0001 ETH typical)
+    uint256 public vrfRequestCost = 0.0001 ether;
+
+    // Markup in wei to add on top of gas + VRF costs (can be set to ~$0.20 worth of ETH)
     // Example: 0.0001 ETH = ~$0.20 at $2000/ETH
     uint256 public gasMarkup = 0.0001 ether;
 
@@ -43,12 +49,24 @@ contract PokerFlatGasFee {
         uint8 numPlayers;
         bool isActive;
         uint256 handNumber;
+        uint256 randomSeed;        // VRF random seed for this hand (0 if not received yet)
+        uint256 vrfRequestId;      // Chainlink VRF request ID for pending requests
     }
 
     mapping(uint256 => Table) public tables;
     uint256 public tableCounter;
     address public owner;
     address public gameServer;
+
+    // Chainlink VRF Configuration
+    uint256 public vrfSubscriptionId;
+    bytes32 public vrfKeyHash;
+    uint32 public vrfCallbackGasLimit = 100000;
+    uint16 public vrfRequestConfirmations = 3;
+    uint32 public vrfNumWords = 1; // We only need 1 random number per hand
+
+    // Map VRF request ID to table ID
+    mapping(uint256 => uint256) public vrfRequestToTable;
 
     // Events
     event TableCreated(uint256 indexed tableId, uint256 smallBlind, uint256 bigBlind, uint256 minBuyIn);
@@ -63,22 +81,27 @@ contract PokerFlatGasFee {
     event EstimatedGasUnitsUpdated(uint256 oldUnits, uint256 newUnits);
     event CardCommitted(uint256 indexed tableId, address indexed player, bytes32 cardHash);
     event CardRevealed(uint256 indexed tableId, address indexed player, string card1, string card2);
+    event RandomSeedRequested(uint256 indexed tableId, uint256 indexed requestId);
+    event RandomSeedFulfilled(uint256 indexed tableId, uint256 randomSeed);
 
-    constructor() {
+    constructor(address vrfCoordinator) VRFConsumerBaseV2Plus(vrfCoordinator) {
         owner = msg.sender;
     }
 
     /**
-     * @dev Calculate current gas fee based on tx.gasprice + markup
-     * Fee = (estimated gas units * current gas price) + markup
-     * This ensures we cover actual gas costs plus a buffer
+     * @dev Calculate current total fee: gas + VRF + markup
+     * Fee = (estimated gas units * current gas price) + VRF request cost + markup ($0.20)
+     * This ensures we cover actual gas costs, Chainlink VRF costs, plus a buffer
      */
     function getCurrentGasFee() public view returns (uint256) {
         // Calculate expected gas cost based on current gas price
         uint256 estimatedGasCost = estimatedGasUnits * tx.gasprice;
 
-        // Add markup for safety buffer
-        uint256 totalFee = estimatedGasCost + gasMarkup;
+        // Add VRF request cost (paid to Chainlink per hand)
+        uint256 totalCost = estimatedGasCost + vrfRequestCost;
+
+        // Add markup for safety buffer (~$0.20)
+        uint256 totalFee = totalCost + gasMarkup;
 
         // Ensure we don't go below minimum
         if (totalFee < minimumGasFee) {
@@ -115,6 +138,78 @@ contract PokerFlatGasFee {
      */
     function setMinimumGasFee(uint256 newMinimum) external onlyOwner {
         minimumGasFee = newMinimum;
+    }
+
+    /**
+     * @dev Update VRF request cost (only owner)
+     * @param newCost New VRF request cost in wei
+     */
+    function setVrfRequestCost(uint256 newCost) external onlyOwner {
+        vrfRequestCost = newCost;
+    }
+
+    /**
+     * @dev Configure Chainlink VRF parameters (only owner)
+     * @param subscriptionId Chainlink VRF subscription ID
+     * @param keyHash Gas lane key hash
+     */
+    function configureVRF(
+        uint256 subscriptionId,
+        bytes32 keyHash
+    ) external onlyOwner {
+        vrfSubscriptionId = subscriptionId;
+        vrfKeyHash = keyHash;
+    }
+
+    /**
+     * @dev Request random seed from Chainlink VRF for a hand
+     * @param tableId Table ID
+     * @return requestId VRF request ID
+     */
+    function requestRandomSeed(uint256 tableId) external onlyGameServer returns (uint256) {
+        Table storage table = tables[tableId];
+        require(table.isActive, "Table not active");
+        require(vrfSubscriptionId != 0, "VRF not configured");
+        require(table.randomSeed == 0, "Random seed already set");
+
+        // Request random words from Chainlink VRF
+        uint256 requestId = s_vrfCoordinator.requestRandomWords(
+            VRFV2PlusClient.RandomWordsRequest({
+                keyHash: vrfKeyHash,
+                subId: vrfSubscriptionId,
+                requestConfirmations: vrfRequestConfirmations,
+                callbackGasLimit: vrfCallbackGasLimit,
+                numWords: vrfNumWords,
+                extraArgs: VRFV2PlusClient._argsToBytes(
+                    VRFV2PlusClient.ExtraArgsV1({nativePayment: false})
+                )
+            })
+        );
+
+        table.vrfRequestId = requestId;
+        vrfRequestToTable[requestId] = tableId;
+
+        emit RandomSeedRequested(tableId, requestId);
+
+        return requestId;
+    }
+
+    /**
+     * @dev Chainlink VRF callback - receives random number
+     * @param requestId VRF request ID
+     * @param randomWords Array of random numbers (we only use first one)
+     */
+    function fulfillRandomWords(
+        uint256 requestId,
+        uint256[] calldata randomWords
+    ) internal override {
+        uint256 tableId = vrfRequestToTable[requestId];
+        require(tableId != 0 || tables[tableId].isActive, "Invalid request");
+
+        Table storage table = tables[tableId];
+        table.randomSeed = randomWords[0];
+
+        emit RandomSeedFulfilled(tableId, randomWords[0]);
     }
 
     modifier onlyOwner() {
@@ -490,6 +585,13 @@ contract PokerFlatGasFee {
             commitment.card1,
             commitment.card2
         );
+    }
+
+    /**
+     * @dev Get random seed for a table (used by game server for shuffling)
+     */
+    function getRandomSeed(uint256 tableId) external view returns (uint256) {
+        return tables[tableId].randomSeed;
     }
 
     /**

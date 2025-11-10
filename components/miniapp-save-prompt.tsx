@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { sdk } from "@farcaster/miniapp-sdk"
 import {
   Dialog,
   DialogContent,
@@ -9,71 +10,74 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Bell, Download, X } from "lucide-react"
-
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
-}
+import { Bell, Star, X } from "lucide-react"
 
 export function MiniappSavePrompt() {
   const [isOpen, setIsOpen] = useState(false)
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
+  const [isInMiniApp, setIsInMiniApp] = useState(false)
+  const [isAdding, setIsAdding] = useState(false)
 
   useEffect(() => {
-    // Check if user has already seen the prompt
-    const hasSeenPrompt = localStorage.getItem("miniapp-save-prompt-seen")
+    // Check if running in Farcaster miniapp
+    sdk.isInMiniApp().then(inMiniApp => {
+      setIsInMiniApp(inMiniApp)
 
-    if (!hasSeenPrompt) {
-      // Show prompt after a short delay to not overwhelm on first load
-      const timer = setTimeout(() => {
-        setIsOpen(true)
-      }, 2000)
+      if (!inMiniApp) return
 
-      return () => clearTimeout(timer)
+      // Check if user has already seen the prompt
+      const hasSeenPrompt = localStorage.getItem("miniapp-add-prompt-seen")
+
+      if (!hasSeenPrompt) {
+        // Show prompt after a short delay
+        const timer = setTimeout(() => {
+          setIsOpen(true)
+        }, 3000)
+
+        return () => clearTimeout(timer)
+      }
+    })
+
+    // Listen for miniAppAdded event (user successfully added the miniapp)
+    const handleMiniAppAdded = () => {
+      console.log('Mini app added!')
+      localStorage.setItem("miniapp-add-prompt-seen", "true")
+      setIsOpen(false)
     }
 
-    // Listen for the beforeinstallprompt event
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault()
-      setDeferredPrompt(e as BeforeInstallPromptEvent)
+    // Listen for miniAppAddRejected event
+    const handleMiniAppAddRejected = ({ reason }: { reason: string }) => {
+      console.log('Mini app add rejected:', reason)
+      setIsAdding(false)
     }
 
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
+    sdk.on('miniAppAdded', handleMiniAppAdded)
+    sdk.on('miniAppAddRejected', handleMiniAppAddRejected)
 
     return () => {
-      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
+      sdk.off('miniAppAdded', handleMiniAppAdded)
+      sdk.off('miniAppAddRejected', handleMiniAppAddRejected)
     }
   }, [])
 
-  const handleInstall = async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt()
-      const { outcome } = await deferredPrompt.userChoice
-
-      if (outcome === 'accepted') {
-        console.log('User accepted the install prompt')
-      }
-
-      setDeferredPrompt(null)
+  const handleAddMiniApp = async () => {
+    setIsAdding(true)
+    try {
+      // This triggers the native Farcaster "Add Mini App" dialog
+      await sdk.actions.addFrame()
+      // Note: Don't close here - wait for the miniAppAdded event
+    } catch (error) {
+      console.error('Failed to add miniapp:', error)
+      setIsAdding(false)
     }
-
-    handleDismiss()
   }
 
   const handleDismiss = () => {
-    localStorage.setItem("miniapp-save-prompt-seen", "true")
+    localStorage.setItem("miniapp-add-prompt-seen", "true")
     setIsOpen(false)
   }
 
-  // Detect if running in standalone mode (already installed)
-  const isStandalone =
-    typeof window !== 'undefined' &&
-    (window.matchMedia('(display-mode: standalone)').matches ||
-    (window.navigator as Window['navigator'] & { standalone?: boolean }).standalone === true)
-
-  // Don't show if already installed
-  if (isStandalone) {
+  // Only show if in Farcaster miniapp
+  if (!isInMiniApp) {
     return null
   }
 
@@ -91,7 +95,7 @@ export function MiniappSavePrompt() {
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-center mb-2 flex items-center justify-center gap-2">
             <span className="text-3xl">♠</span>
-            Save Prim&apos;s Poker
+            Add Prim&apos;s Poker
           </DialogTitle>
           <DialogDescription className="text-gray-300 space-y-4">
             <div className="bg-purple-900/40 border border-purple-500/30 rounded-lg p-4 space-y-3">
@@ -100,46 +104,42 @@ export function MiniappSavePrompt() {
                   <Bell className="w-4 h-4 text-white" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-white mb-1">Get Notifications</h3>
+                  <h3 className="font-semibold text-white mb-1">Turn Notifications</h3>
                   <p className="text-sm text-gray-300">
-                    Receive instant alerts when it&apos;s your turn to play. Never miss a game!
+                    Get notified when it&apos;s your turn to act. Never miss a hand!
                   </p>
                 </div>
               </div>
 
               <div className="flex items-start gap-3">
                 <div className="bg-green-600 rounded-full p-2 mt-1">
-                  <Download className="w-4 h-4 text-white" />
+                  <Star className="w-4 h-4 text-white" />
                 </div>
                 <div>
                   <h3 className="font-semibold text-white mb-1">Quick Access</h3>
                   <p className="text-sm text-gray-300">
-                    Add to your home screen for instant access to your poker games.
+                    Add to your Farcaster mini apps for easy access to your games.
                   </p>
                 </div>
               </div>
             </div>
 
             <div className="text-sm text-gray-400 bg-slate-800 rounded-lg p-4">
-              <p className="font-semibold text-white mb-2">How to save:</p>
-              <ul className="list-disc list-inside space-y-1">
-                <li>iOS: Tap <strong>Share</strong> → <strong>Add to Home Screen</strong></li>
-                <li>Android: Tap <strong>Menu</strong> → <strong>Install App</strong></li>
-                <li>Farcaster: Save this frame for quick access</li>
-              </ul>
+              <p className="text-white mb-1">
+                Adding this mini app will enable notifications so you never miss your turn in a poker hand.
+              </p>
             </div>
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-2 mt-4">
-          {deferredPrompt && (
-            <Button
-              onClick={handleInstall}
-              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold"
-            >
-              Install Now
-            </Button>
-          )}
+          <Button
+            onClick={handleAddMiniApp}
+            disabled={isAdding}
+            className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold disabled:opacity-50"
+          >
+            {isAdding ? 'Adding...' : 'Add Mini App'}
+          </Button>
           <Button
             onClick={handleDismiss}
             variant="outline"

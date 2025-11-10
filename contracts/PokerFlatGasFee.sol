@@ -289,13 +289,16 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus {
         uint256 smallBlind,
         uint256 bigBlind
     ) external returns (uint256) {
+        require(smallBlind > 0 && bigBlind > 0, "Blinds must be greater than zero");
+        require(smallBlind < bigBlind, "Small blind must be less than big blind");
+
         uint256 totalBlinds = smallBlind + bigBlind;
 
         // Require minimum blinds to cover gas fee (use current estimate)
         uint256 currentGasFee = getCurrentGasFee();
-        require(totalBlinds > currentGasFee, "Blinds too low to cover gas");
+        require(totalBlinds > currentGasFee, "Stakes too small");
 
-        uint256 tableId = tableCounter++;
+        uint256 tableId = ++tableCounter; // Pre-increment to start at 1
         Table storage table = tables[tableId];
 
         table.tableId = tableId;
@@ -315,12 +318,13 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus {
      * @param tableId Table to join
      */
     function joinTable(uint256 tableId) external payable {
+        require(tableId > 0 && tableId <= tableCounter, "Table does not exist");
         Table storage table = tables[tableId];
 
         require(table.isActive, "Table not active");
-        require(msg.value >= table.minBuyIn, "Buy-in too low");
-        require(table.numPlayers < 9, "Table full");
-        require(!table.isSeated[msg.sender], "Already seated");
+        require(msg.value >= table.minBuyIn, "Buy-in below minimum");
+        require(table.numPlayers < 9, "Table is full");
+        require(!table.isSeated[msg.sender], "Already seated at this table");
 
         // Find empty seat
         uint8 seatIndex;
@@ -346,7 +350,8 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus {
     function leaveTable(uint256 tableId) external {
         Table storage table = tables[tableId];
 
-        require(table.isSeated[msg.sender], "Not seated");
+        require(table.isSeated[msg.sender], "Not seated at this table");
+        require(table.pot == 0, "Cannot leave during active hand");
 
         uint256 chipCount = table.chips[msg.sender];
         require(chipCount > 0, "No chips to cash out");
@@ -553,6 +558,14 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus {
         view
         returns (bool viable, string memory reason)
     {
+        if (smallBlind == 0 || bigBlind == 0) {
+            return (false, "Blinds must be greater than zero");
+        }
+
+        if (smallBlind >= bigBlind) {
+            return (false, "Small blind must be less than big blind");
+        }
+
         uint256 totalBlinds = smallBlind + bigBlind;
         uint256 currentGasFee = getCurrentGasFee();
 

@@ -6,11 +6,11 @@ const path = require('path');
 const contractPath = path.join(__dirname, 'contracts', 'PokerFlatGasFee.sol');
 const source = fs.readFileSync(contractPath, 'utf8');
 
-// Read Chainlink dependencies
+// Read Chainlink and OpenZeppelin dependencies
 function findImports(importPath) {
   try {
     let fullPath;
-    if (importPath.startsWith('@chainlink')) {
+    if (importPath.startsWith('@chainlink') || importPath.startsWith('@openzeppelin')) {
       fullPath = path.join(__dirname, 'node_modules', importPath);
     } else {
       fullPath = path.join(__dirname, 'contracts', importPath);

@@ -295,7 +295,7 @@ export function PokerTableView({
               🔔
             </Button>
           )}
-          <div>👥 6P</div>
+          <div>👥 {players.length}P</div>
           <div>⏱ {isMyTurn ? '30s' : '--'}</div>
         </div>
       </div>
@@ -329,7 +329,12 @@ export function PokerTableView({
             <div className="text-xs text-purple-400 mt-1">≈ {pot.toFixed(6)} ETH</div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 mb-4">
+          <div className={`grid gap-2 mb-4 ${
+            players.length <= 2 ? 'grid-cols-2' :
+            players.length <= 4 ? 'grid-cols-2' :
+            players.length <= 6 ? 'grid-cols-3' :
+            'grid-cols-3'
+          }`}>
             {players.map((player, idx) => (
               <div key={player.address} className="relative bg-slate-800/50 border border-purple-500/20 rounded-lg p-2">
                 {/* Position Badge */}

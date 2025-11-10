@@ -25,8 +25,7 @@ export const minikitConfig = {
     screenshotUrls: [`${ROOT_URL}/hero-poker.jpg`],
     iconUrl: `${ROOT_URL}/icon-512x512.jpg`,
     // IMPORTANT: splashImageUrl MUST be 200x200px per Farcaster requirements
-    // Create this file using instructions in IMAGE_REQUIREMENTS.md
-    splashImageUrl: `${ROOT_URL}/splash-200x200.jpg`,
+    splashImageUrl: `${ROOT_URL}/splash.jpg`,
     splashBackgroundColor: "#0f172a",
     homeUrl: ROOT_URL,
     webhookUrl: `${ROOT_URL}/api/webhook`,

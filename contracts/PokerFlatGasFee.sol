@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
 import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
+import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
 /**
  * @title PokerFlatGasFee
@@ -15,8 +16,15 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus {
     // Estimated gas units needed for distributeWinnings + other ops
     uint256 public estimatedGasUnits = 60000; // ~60k gas for typical hand completion
 
-    // Chainlink VRF cost per request (varies by chain, ~0.0001 ETH typical)
-    uint256 public vrfRequestCost = 0.0001 ether;
+    // Chainlink VRF cost calculation parameters
+    // Verification gas: gas used by Chainlink to verify the VRF proof on-chain
+    uint256 public vrfVerificationGas = 200000; // ~200k gas for VRF verification
+
+    // Premium percentage charged by Chainlink (typically 20-25%)
+    uint256 public vrfPremiumPercentage = 20; // 20% premium
+
+    // LINK/ETH price feed address (Chainlink oracle)
+    AggregatorV3Interface public linkEthPriceFeed;
 
     // Markup in wei to add on top of gas + VRF costs (can be set to ~$0.20 worth of ETH)
     // Example: 0.0001 ETH = ~$0.20 at $2000/ETH
@@ -89,6 +97,40 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus {
     }
 
     /**
+     * @dev Calculate Chainlink VRF cost using proper formula
+     * Formula: Total Gas Cost (in ETH) * ((100 + Premium%) / 100) / (LINK/ETH Price)
+     * Where Total Gas = Verification Gas + Callback Gas
+     * Returns cost in ETH equivalent
+     */
+    function calculateVrfCost() public view returns (uint256) {
+        // If price feed not configured, return 0
+        if (address(linkEthPriceFeed) == address(0)) {
+            return 0;
+        }
+
+        // Total gas = verification gas + callback gas limit
+        uint256 totalGas = vrfVerificationGas + vrfCallbackGasLimit;
+
+        // Total gas cost in wei (ETH)
+        uint256 totalGasCostWei = totalGas * tx.gasprice;
+
+        // Apply premium percentage: cost * (100 + premium) / 100
+        uint256 costWithPremium = (totalGasCostWei * (100 + vrfPremiumPercentage)) / 100;
+
+        // Get LINK/ETH price from Chainlink oracle
+        // Price feed returns LINK/ETH with 18 decimals
+        (, int256 linkEthPrice, , , ) = linkEthPriceFeed.latestRoundData();
+        require(linkEthPrice > 0, "Invalid LINK/ETH price");
+
+        // Convert to ETH cost: costWithPremium / (LINK/ETH price)
+        // Since linkEthPrice has 18 decimals, we need to scale properly
+        // Cost in ETH = costWithPremium * 1e18 / linkEthPrice
+        uint256 vrfCostInEth = (costWithPremium * 1e18) / uint256(linkEthPrice);
+
+        return vrfCostInEth;
+    }
+
+    /**
      * @dev Calculate current total fee: gas + VRF + markup
      * Fee = (estimated gas units * current gas price) + VRF request cost + markup ($0.20)
      * This ensures we cover actual gas costs, Chainlink VRF costs, plus a buffer
@@ -97,8 +139,11 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus {
         // Calculate expected gas cost based on current gas price
         uint256 estimatedGasCost = estimatedGasUnits * tx.gasprice;
 
-        // Add VRF request cost (paid to Chainlink per hand)
-        uint256 totalCost = estimatedGasCost + vrfRequestCost;
+        // Calculate VRF request cost using proper formula
+        uint256 vrfCost = calculateVrfCost();
+
+        // Add VRF cost to total
+        uint256 totalCost = estimatedGasCost + vrfCost;
 
         // Add markup for safety buffer (~$0.20)
         uint256 totalFee = totalCost + gasMarkup;
@@ -141,11 +186,30 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus {
     }
 
     /**
-     * @dev Update VRF request cost (only owner)
-     * @param newCost New VRF request cost in wei
+     * @dev Update VRF verification gas estimate (only owner)
+     * @param newGas New verification gas estimate
      */
-    function setVrfRequestCost(uint256 newCost) external onlyOwner {
-        vrfRequestCost = newCost;
+    function setVrfVerificationGas(uint256 newGas) external onlyOwner {
+        require(newGas > 0, "Verification gas must be positive");
+        vrfVerificationGas = newGas;
+    }
+
+    /**
+     * @dev Update VRF premium percentage (only owner)
+     * @param newPremium New premium percentage (e.g., 20 for 20%)
+     */
+    function setVrfPremiumPercentage(uint256 newPremium) external onlyOwner {
+        require(newPremium <= 100, "Premium too high");
+        vrfPremiumPercentage = newPremium;
+    }
+
+    /**
+     * @dev Set LINK/ETH price feed address (only owner)
+     * @param priceFeedAddress Address of Chainlink LINK/ETH price feed
+     */
+    function setLinkEthPriceFeed(address priceFeedAddress) external onlyOwner {
+        require(priceFeedAddress != address(0), "Invalid price feed address");
+        linkEthPriceFeed = AggregatorV3Interface(priceFeedAddress);
     }
 
     /**

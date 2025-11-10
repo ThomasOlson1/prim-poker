@@ -20,9 +20,17 @@ async function main() {
 
   console.log("✅ PokerFlatGasFee deployed to:", address)
 
-  // Verify gas fee
-  const gasFee = await poker.GAS_FEE()
-  console.log("Gas fee:", ethers.formatEther(gasFee), "ETH")
+  // Verify dynamic gas fee configuration
+  const estimatedGasUnits = await poker.estimatedGasUnits()
+  const gasMarkup = await poker.gasMarkup()
+  const minimumGasFee = await poker.minimumGasFee()
+  const currentGasFee = await poker.getCurrentGasFee()
+
+  console.log("\n⚙️  Gas Fee Configuration:")
+  console.log("- Estimated gas units:", estimatedGasUnits.toString())
+  console.log("- Gas markup:", ethers.formatEther(gasMarkup), "ETH (~$0.20 buffer)")
+  console.log("- Minimum fee:", ethers.formatEther(minimumGasFee), "ETH")
+  console.log("- Current calculated fee:", ethers.formatEther(currentGasFee), "ETH")
 
   // Create a test table
   console.log("\n🎰 Creating test table...")
@@ -44,6 +52,22 @@ async function main() {
   console.log("- Min buy-in:", ethers.formatEther(tableInfo.minBuyIn), "ETH")
   console.log("- Players:", tableInfo.numPlayers.toString())
   console.log("- Active:", tableInfo.isActive)
+
+  // Test stake viability
+  console.log("\n✅ Testing stake viability...")
+  const [viable, reason] = await poker.isViableStakes(smallBlind, bigBlind)
+  console.log("- Stakes viable:", viable)
+  console.log("- Reason:", reason)
+
+  // Calculate effective rake
+  const totalBlinds = smallBlind + bigBlind
+  const toPot = totalBlinds - currentGasFee
+  const effectiveRake = (currentGasFee * BigInt(100)) / toPot
+  console.log("\n💰 Fee Analysis:")
+  console.log("- Total blinds:", ethers.formatEther(totalBlinds), "ETH")
+  console.log("- Gas fee:", ethers.formatEther(currentGasFee), "ETH")
+  console.log("- To pot:", ethers.formatEther(toPot), "ETH")
+  console.log("- Effective rake:", effectiveRake.toString() + "%")
 
   console.log("\n🎉 Deployment complete!")
   console.log("\n📝 Save this contract address to your .env file:")

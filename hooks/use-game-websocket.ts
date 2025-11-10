@@ -3,11 +3,13 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useWebSocket } from './use-websocket'
 import { useAccount } from 'wagmi'
+import { FarcasterService } from '@/lib/farcaster-service'
 
 export interface GameStateFromServer {
   gameId: string
   players: Record<string, {
     address: string
+    fid: number  // Farcaster ID for multi-account prevention
     stack: number
     bet: number
     folded: boolean
@@ -38,8 +40,27 @@ export function useGameWebSocket(gameId: string | null) {
   useEffect(() => {
     if (!isConnected || !gameId || !address) return
 
-    console.log('🎮 Subscribing to game:', gameId, 'with address:', address)
-    subscribe(gameId, address)
+    // Get Farcaster user context for multi-account prevention
+    const subscribeWithFid = async () => {
+      try {
+        const farcasterUser = await FarcasterService.getUserContext()
+
+        if (!farcasterUser || !farcasterUser.fid) {
+          console.warn('⚠️  No Farcaster context available, subscribing without FID')
+          subscribe(gameId, address)
+          return
+        }
+
+        console.log('🎮 Subscribing to game:', gameId, 'with address:', address, 'FID:', farcasterUser.fid)
+        subscribe(gameId, address, farcasterUser.fid)
+      } catch (error) {
+        console.error('Failed to get Farcaster context:', error)
+        // Fallback to subscribing without FID
+        subscribe(gameId, address)
+      }
+    }
+
+    subscribeWithFid()
 
     return () => {
       console.log('🎮 Unsubscribing from game:', gameId)
@@ -92,6 +113,11 @@ export function useGameWebSocket(gameId: string | null) {
       console.log('🎯 Action taken:', data.player, data.action)
     })
 
+    const unsubscribeError = on('error', (data: any) => {
+      console.error('🚫 Server error:', data.code, data.message)
+      // You could also emit this to a global error handler or toast
+    })
+
     return () => {
       unsubscribeGameState()
       unsubscribeTurnTimer()
@@ -100,6 +126,7 @@ export function useGameWebSocket(gameId: string | null) {
       unsubscribeHandStarted()
       unsubscribeHandEnded()
       unsubscribeActionTaken()
+      unsubscribeError()
     }
   }, [isConnected, address, on])
 

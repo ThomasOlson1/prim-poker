@@ -74,7 +74,19 @@ wss.on('connection', (ws, req) => {
 
         case 'subscribe':
           const gameId = message.gameId
+          const fid = message.fid  // Extract Farcaster ID from message
           currentGameId = gameId
+
+          // 🛡️ Require Farcaster authentication
+          if (!fid || typeof fid !== 'number') {
+            ws.send(JSON.stringify({
+              type: 'error',
+              code: 'FID_REQUIRED',
+              message: 'Farcaster authentication is required to join'
+            }))
+            console.log(`🚫 Rejected subscription without FID from ${playerAddress}`)
+            break
+          }
 
           let room = gameRooms.get(gameId)
           if (!room) {
@@ -83,8 +95,13 @@ wss.on('connection', (ws, req) => {
           }
 
           if (playerAddress) {
-            await room.addPlayer(playerAddress, ws)
-            console.log(`✅ Player ${playerAddress} subscribed to game ${gameId}`)
+            try {
+              await room.addPlayer(playerAddress, fid, ws)
+              console.log(`✅ Player ${playerAddress} (FID: ${fid}) subscribed to game ${gameId}`)
+            } catch (error) {
+              console.log(`🚫 Failed to add player: ${error}`)
+              // Error message already sent by addPlayer
+            }
           }
           break
 

@@ -171,3 +171,76 @@ export function useJoinTable() {
 
   return { joinTable, loading, error }
 }
+
+export function useCurrentGasFee() {
+  const { contract, isInitialized } = usePokerContract()
+  const [gasFee, setGasFee] = useState<bigint | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!contract || !isInitialized) {
+      return
+    }
+
+    const fetchGasFee = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const fee = await contract.getCurrentGasFee()
+        setGasFee(fee)
+      } catch (err) {
+        console.error('Failed to fetch gas fee:', err)
+        setError(err instanceof Error ? err.message : 'Failed to fetch gas fee')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchGasFee()
+
+    // Refresh every 30 seconds to catch gas price changes
+    const interval = setInterval(fetchGasFee, 30000)
+    return () => clearInterval(interval)
+  }, [contract, isInitialized])
+
+  return { gasFee, loading, error }
+}
+
+export function useEthPrice() {
+  const [ethPrice, setEthPrice] = useState<number | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchEthPrice = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const response = await fetch(
+          'https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd'
+        )
+        if (!response.ok) {
+          throw new Error('Failed to fetch ETH price')
+        }
+        const data = await response.json()
+        setEthPrice(data.ethereum.usd)
+      } catch (err) {
+        console.error('Failed to fetch ETH price:', err)
+        setError(err instanceof Error ? err.message : 'Failed to fetch ETH price')
+        // Fallback to approximate price if API fails
+        setEthPrice(3000)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchEthPrice()
+
+    // Refresh every 60 seconds
+    const interval = setInterval(fetchEthPrice, 60000)
+    return () => clearInterval(interval)
+  }, [])
+
+  return { ethPrice, loading, error }
+}

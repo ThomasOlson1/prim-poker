@@ -26,7 +26,7 @@ export function PokerGameApp() {
 
   const handleCreateGame = async (gameData: {
     name: string
-    buyInEth: number
+    buyInDollars: number
     blindLevel: string
     turnTimeMinutes: number
     maxPlayers: number
@@ -42,6 +42,7 @@ export function PokerGameApp() {
       // Convert USD to ETH
       const smallBlindEth = smallBlindUsd / ethPrice
       const bigBlindEth = bigBlindUsd / ethPrice
+      const buyInEth = gameData.buyInDollars / ethPrice
 
       // Convert to Wei (smallest ETH unit)
       const smallBlind = ethers.parseEther(smallBlindEth.toString())
@@ -49,6 +50,7 @@ export function PokerGameApp() {
 
       console.log("🎲 Creating table on contract...")
       console.log(`   Blinds: $${smallBlindUsd}/$${bigBlindUsd} (${smallBlindEth.toFixed(6)}/${bigBlindEth.toFixed(6)} ETH)`)
+      console.log(`   Buy-in: $${gameData.buyInDollars} (${buyInEth.toFixed(6)} ETH)`)
 
       // Call smart contract to create table
       const tableId = await createTable(smallBlind, bigBlind)

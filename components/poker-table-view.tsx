@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { useTurnNotifications } from "@/hooks/use-turn-notifications"
 import { useGameWebSocket } from "@/hooks/use-game-websocket"
-import { useTableInfo, usePlayerInfo, useJoinTable } from "@/hooks/use-poker-contract"
+import { useTableInfo, usePlayerInfo, useJoinTable, useEthPrice } from "@/hooks/use-poker-contract"
 import { useAccount } from "wagmi"
 import { useToast } from "@/hooks/use-toast"
 import { ethers } from "ethers"
@@ -29,6 +29,15 @@ export function PokerTableView({
 
   // Fetch player info from contract
   const { playerInfo, loading: loadingPlayerInfo } = usePlayerInfo(gameId, address)
+
+  // Get ETH price for conversion
+  const { ethPrice } = useEthPrice()
+
+  // Convert ETH to dollars
+  const ethToDollars = (eth: number): number => {
+    if (!ethPrice) return eth * 3000 // Fallback
+    return eth * ethPrice
+  }
 
   // WebSocket connection for real-time game state
   const { gameState: wsGameState, isMyTurn, isConnected, sendAction } = useGameWebSocket(gameId)
@@ -92,14 +101,28 @@ export function PokerTableView({
 
   // If player is not seated, show join prompt
   if (playerInfo && !playerInfo.isSeated && tableInfo) {
+    const smallBlindEth = Number(ethers.formatEther(tableInfo.smallBlind))
+    const bigBlindEth = Number(ethers.formatEther(tableInfo.bigBlind))
+    const buyInEth = Number(ethers.formatEther(tableInfo.minBuyIn))
+
+    const smallBlindUsd = ethToDollars(smallBlindEth)
+    const bigBlindUsd = ethToDollars(bigBlindEth)
+    const buyInUsd = ethToDollars(buyInEth)
+
     return (
       <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 safe-area-inset items-center justify-center">
         <div className="bg-slate-800 p-8 rounded-lg border border-purple-500/20 max-w-md">
           <h2 className="text-2xl font-bold text-white mb-4">Join Table #{gameId}</h2>
           <div className="space-y-2 text-gray-300 mb-6">
-            <div>Blinds: {ethers.formatEther(tableInfo.smallBlind)}/{ethers.formatEther(tableInfo.bigBlind)} ETH</div>
+            <div>
+              <div>Blinds: ${smallBlindUsd.toFixed(2)}/${bigBlindUsd.toFixed(2)}</div>
+              <div className="text-xs text-purple-400">≈ {smallBlindEth.toFixed(6)}/{bigBlindEth.toFixed(6)} ETH</div>
+            </div>
             <div>Players: {tableInfo.numPlayers}/9</div>
-            <div>Buy-in: {ethers.formatEther(tableInfo.minBuyIn)} ETH</div>
+            <div>
+              <div>Buy-in: ${buyInUsd.toFixed(2)}</div>
+              <div className="text-xs text-purple-400">≈ {buyInEth.toFixed(6)} ETH</div>
+            </div>
           </div>
           <div className="flex gap-2">
             <Button onClick={onExit} variant="outline" className="flex-1">
@@ -302,7 +325,8 @@ export function PokerTableView({
           {/* Pot Display */}
           <div className="bg-green-900/50 rounded-lg p-3 mb-4 text-center border border-green-700/30">
             <div className="text-xs text-gray-300 mb-1">Current Pot</div>
-            <div className="text-2xl font-bold text-amber-400">{pot.toFixed(4)} ETH</div>
+            <div className="text-2xl font-bold text-amber-400">${ethToDollars(pot).toFixed(2)}</div>
+            <div className="text-xs text-purple-400 mt-1">≈ {pot.toFixed(6)} ETH</div>
           </div>
 
           <div className="grid grid-cols-3 gap-2 mb-4">
@@ -327,10 +351,10 @@ export function PokerTableView({
                     <div className="text-xs font-semibold text-white truncate">
                       {player.address === address ? 'You' : `${player.address.slice(0, 6)}...${player.address.slice(-4)}`}
                     </div>
-                    <div className="text-xs text-amber-400">{player.stack} ETH</div>
+                    <div className="text-xs text-amber-400">${ethToDollars(player.stack).toFixed(2)}</div>
                   </div>
                 </div>
-                {player.bet > 0 && <div className="text-xs text-red-400 font-bold mt-1">Bet: {player.bet} ETH</div>}
+                {player.bet > 0 && <div className="text-xs text-red-400 font-bold mt-1">Bet: ${ethToDollars(player.bet).toFixed(2)}</div>}
                 {player.address === address && (
                   <div className="text-xs text-blue-400 mt-1">Your seat</div>
                 )}
@@ -345,7 +369,11 @@ export function PokerTableView({
 
           {/* Game Status */}
           <div className="text-center mb-4">
-            <div className="text-xs text-gray-400 mb-1">$1/$2 Blinds</div>
+            {tableInfo && (
+              <div className="text-xs text-gray-400 mb-1">
+                ${ethToDollars(Number(ethers.formatEther(tableInfo.smallBlind))).toFixed(2)}/${ethToDollars(Number(ethers.formatEther(tableInfo.bigBlind))).toFixed(2)} Blinds
+              </div>
+            )}
             <div className="text-sm font-semibold text-purple-400">{stage.toUpperCase()}</div>
           </div>
         </div>
@@ -357,7 +385,12 @@ export function PokerTableView({
           <div className="bg-slate-700/50 rounded px-3 py-2">
             <div className="flex justify-between items-center mb-2">
               <label className="text-xs text-gray-300">Bet Amount</label>
-              <span className="text-sm font-bold text-amber-400">${selectedBet || 0}</span>
+              <div className="text-right">
+                <div className="text-sm font-bold text-amber-400">${selectedBet || 0}</div>
+                {ethPrice && selectedBet && (
+                  <div className="text-xs text-purple-400">≈ {((selectedBet || 0) / ethPrice).toFixed(6)} ETH</div>
+                )}
+              </div>
             </div>
             <input
               type="range"

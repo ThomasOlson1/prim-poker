@@ -9,7 +9,7 @@ interface CreateGameModalProps {
   onClose: () => void
   onCreate: (gameData: {
     name: string
-    buyInEth: number
+    buyInDollars: number
     blindLevel: string
     turnTimeMinutes: number
     maxPlayers: number
@@ -19,7 +19,7 @@ interface CreateGameModalProps {
 
 export function CreateGameModal({ onClose, onCreate, loading }: CreateGameModalProps) {
   const [name, setName] = useState("My Game")
-  const [buyInEth, setBuyInEth] = useState(0.5)
+  const [buyInDollars, setBuyInDollars] = useState(100)
   const [blindLevel, setBlindLevel] = useState("1/2")
   const [turnTimeMinutes, setTurnTimeMinutes] = useState(3)
   const [maxPlayers, setMaxPlayers] = useState(6)
@@ -27,7 +27,7 @@ export function CreateGameModal({ onClose, onCreate, loading }: CreateGameModalP
 
   // Convert dollar amount to ETH
   const dollarToEth = (dollars: number): number => {
-    if (!ethPrice) return dollars // Fallback if price not loaded
+    if (!ethPrice) return dollars / 3000 // Fallback if price not loaded (~$3000 per ETH)
     return dollars / ethPrice
   }
 
@@ -62,22 +62,22 @@ export function CreateGameModal({ onClose, onCreate, loading }: CreateGameModalP
   }
 
   const bigBlind = getBigBlind(blindLevel)
-  const minBuyIn = bigBlind * 50  // 50 big blinds
-  const maxBuyIn = bigBlind * 200 // 200 big blinds
+  const minBuyIn = bigBlind * 50  // 50 big blinds in dollars
+  const maxBuyIn = bigBlind * 200 // 200 big blinds in dollars
 
   // Adjust buy-in when blind level changes
   useEffect(() => {
-    if (buyInEth < minBuyIn) {
-      setBuyInEth(minBuyIn)
-    } else if (buyInEth > maxBuyIn) {
-      setBuyInEth(maxBuyIn)
+    if (buyInDollars < minBuyIn) {
+      setBuyInDollars(minBuyIn)
+    } else if (buyInDollars > maxBuyIn) {
+      setBuyInDollars(maxBuyIn)
     }
-  }, [blindLevel, minBuyIn, maxBuyIn, buyInEth])
+  }, [blindLevel, minBuyIn, maxBuyIn, buyInDollars])
 
   const handleSubmit = () => {
     onCreate({
       name,
-      buyInEth,
+      buyInDollars,
       blindLevel,
       turnTimeMinutes,
       maxPlayers,
@@ -101,21 +101,28 @@ export function CreateGameModal({ onClose, onCreate, loading }: CreateGameModalP
             />
           </div>
 
-          {/* Buy In ETH */}
+          {/* Buy In Dollars */}
           <div>
             <label className="text-xs text-gray-300 font-semibold">
-              Buy In: {buyInEth.toFixed(3)} ETH ({(buyInEth / bigBlind).toFixed(0)}bb)
+              Buy In: ${buyInDollars.toFixed(2)} ({(buyInDollars / bigBlind).toFixed(0)}bb)
             </label>
             <input
               type="range"
               min={minBuyIn}
               max={maxBuyIn}
               step={bigBlind}
-              value={buyInEth}
-              onChange={(e) => setBuyInEth(Number(e.target.value))}
+              value={buyInDollars}
+              onChange={(e) => setBuyInDollars(Number(e.target.value))}
               className="w-full mt-1"
             />
-            <div className="text-xs text-gray-500 mt-1">Range: {minBuyIn.toFixed(3)} ETH (50bb) - {maxBuyIn.toFixed(3)} ETH (200bb)</div>
+            <div className="text-xs text-gray-500 mt-1">
+              Range: ${minBuyIn.toFixed(2)} (50bb) - ${maxBuyIn.toFixed(2)} (200bb)
+            </div>
+            {ethPrice && (
+              <div className="text-xs text-purple-400 mt-1">
+                ≈ {formatEth(buyInDollars)} ETH
+              </div>
+            )}
           </div>
 
           {/* Blind Level Selector */}

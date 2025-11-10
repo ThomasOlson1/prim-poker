@@ -171,3 +171,38 @@ export function useJoinTable() {
 
   return { joinTable, loading, error }
 }
+
+export function useCurrentGasFee() {
+  const { contract, isInitialized } = usePokerContract()
+  const [gasFee, setGasFee] = useState<bigint | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!contract || !isInitialized) {
+      return
+    }
+
+    const fetchGasFee = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const fee = await contract.getCurrentGasFee()
+        setGasFee(fee)
+      } catch (err) {
+        console.error('Failed to fetch gas fee:', err)
+        setError(err instanceof Error ? err.message : 'Failed to fetch gas fee')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchGasFee()
+
+    // Refresh every 30 seconds to catch gas price changes
+    const interval = setInterval(fetchGasFee, 30000)
+    return () => clearInterval(interval)
+  }, [contract, isInitialized])
+
+  return { gasFee, loading, error }
+}

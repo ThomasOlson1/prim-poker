@@ -11,6 +11,8 @@ import {
   WalletDropdownDisconnect,
 } from '@coinbase/onchainkit/wallet'
 import { Address, Avatar, Name, Identity } from '@coinbase/onchainkit/identity'
+import { useCurrentGasFee } from '@/hooks/use-poker-contract'
+import { ethers } from 'ethers'
 
 interface GameLobbyProps {
   games?: Array<{
@@ -30,6 +32,7 @@ interface GameLobbyProps {
 export function GameLobby({ games = [], onPlayGame, onNavigateToMyGames, onCreateGame }: GameLobbyProps) {
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null)
   const [isJoining, setIsJoining] = useState(false)
+  const { gasFee } = useCurrentGasFee()
 
   const handleJoinGame = (gameId: string) => {
     setSelectedGameId(gameId)
@@ -38,6 +41,19 @@ export function GameLobby({ games = [], onPlayGame, onNavigateToMyGames, onCreat
       onPlayGame(gameId)
       setIsJoining(false)
     }, 500)
+  }
+
+  // Format gas fee for display
+  const formatGasFee = () => {
+    if (!gasFee) return '$0.65' // Fallback to default value
+    try {
+      const ethAmount = ethers.formatEther(gasFee)
+      // Assuming 1 ETH = $3000 for display purposes (you can make this dynamic later)
+      const dollarAmount = parseFloat(ethAmount) * 3000
+      return `$${dollarAmount.toFixed(2)}`
+    } catch {
+      return '$0.65' // Fallback on error
+    }
   }
 
   return (
@@ -54,7 +70,7 @@ export function GameLobby({ games = [], onPlayGame, onNavigateToMyGames, onCreat
 
         <div className="bg-amber-900/40 border border-amber-600/50 rounded-lg p-3 mb-6 text-center">
           <div className="text-xs text-amber-200 font-semibold">Flat Rake Casino</div>
-          <div className="text-sm text-amber-100 mt-1">$0.65 per hand to cover gas fees</div>
+          <div className="text-sm text-amber-100 mt-1">{formatGasFee()} per hand to cover gas fees</div>
         </div>
 
         {/* Wallet Connection */}

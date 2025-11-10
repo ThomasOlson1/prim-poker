@@ -1,7 +1,9 @@
 import { expect } from "chai"
-import { ethers } from "hardhat"
+import hre from "hardhat"
 import { PokerFlatGasFee } from "../typechain-types"
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers"
+
+const { ethers } = hre
 
 describe("PokerFlatGasFee", function () {
   let poker: PokerFlatGasFee

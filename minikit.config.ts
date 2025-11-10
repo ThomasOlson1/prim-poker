@@ -24,7 +24,9 @@ export const minikitConfig = {
     description: "Play turn-based poker with friends on Farcaster. Bet with ETH, get real-time notifications, and enjoy a seamless on-chain gaming experience.",
     screenshotUrls: [`${ROOT_URL}/hero-poker.jpg`],
     iconUrl: `${ROOT_URL}/icon-512x512.jpg`,
-    splashImageUrl: `${ROOT_URL}/hero-poker.jpg`,
+    // IMPORTANT: splashImageUrl MUST be 200x200px per Farcaster requirements
+    // Create this file using instructions in IMAGE_REQUIREMENTS.md
+    splashImageUrl: `${ROOT_URL}/splash-200x200.jpg`,
     splashBackgroundColor: "#0f172a",
     homeUrl: ROOT_URL,
     webhookUrl: `${ROOT_URL}/api/webhook`,

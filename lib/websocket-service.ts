@@ -1,10 +1,10 @@
 type EventHandler = (data: unknown) => void
 
 interface GameEvent {
-  type: "player-turn" | "action-taken" | "game-state-update" | "player-joined" | "game-started" | "game-ended"
-  gameId: string
-  data: unknown
+  type: string
+  gameId?: string
   timestamp: number
+  [key: string]: any  // Allow any additional fields from server
 }
 
 export class WebSocketService {
@@ -127,17 +127,19 @@ export class WebSocketService {
    * Handle incoming event
    */
   private handleEvent(event: GameEvent): void {
-    const eventKey = `${event.type}:${event.gameId}`
-
     // Notify all listeners for this event type
+    // Pass the entire event object to maintain compatibility with server format
     this.listeners.get(event.type)?.forEach((handler) => {
-      handler(event.data)
+      handler(event)
     })
 
-    // Notify game-specific listeners
-    this.listeners.get(eventKey)?.forEach((handler) => {
-      handler(event.data)
-    })
+    // Notify game-specific listeners if gameId is present
+    if (event.gameId) {
+      const eventKey = `${event.type}:${event.gameId}`
+      this.listeners.get(eventKey)?.forEach((handler) => {
+        handler(event)
+      })
+    }
   }
 
   /**

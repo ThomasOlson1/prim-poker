@@ -6,6 +6,7 @@ import { ethers } from 'ethers'
 
 export interface Player {
   address: string
+  fid: number  // Farcaster ID for multi-account prevention
   ws: WebSocket
   stack: number
   bet: number
@@ -28,6 +29,7 @@ export class GameRoom {
   private gameId: string
   private wss: WebSocketServer
   private players: Map<string, Player>
+  private activeFids: Set<number> = new Set()  // Track Farcaster IDs to prevent multi-accounting
   private currentPlayer: string | null = null
   private turnTimer: TurnTimer | null = null
   private gameState: GameState
@@ -51,7 +53,21 @@ export class GameRoom {
     }
   }
 
-  async addPlayer(address: string, ws: WebSocket) {
+  async addPlayer(address: string, fid: number, ws: WebSocket) {
+    // 🛡️ ANTI-SYBIL: Check if this Farcaster ID is already playing at this table
+    if (this.activeFids.has(fid)) {
+      const error = {
+        type: 'error',
+        code: 'DUPLICATE_FID',
+        message: 'This Farcaster account is already playing at this table with another wallet',
+        gameId: this.gameId,
+        timestamp: Date.now()
+      }
+      ws.send(JSON.stringify(error))
+      console.log(`🚫 Blocked duplicate FID ${fid} trying to join with address ${address}`)
+      throw new Error('Duplicate Farcaster ID')
+    }
+
     if (!this.players.has(address)) {
       // Fetch player's chip stack from contract if available
       let stack = 0
@@ -67,18 +83,25 @@ export class GameRoom {
 
       const player: Player = {
         address,
+        fid,  // Store Farcaster ID
         ws,
         stack,
         bet: 0,
         folded: false,
         isActive: true
       }
+
       this.players.set(address, player)
+      this.activeFids.add(fid)  // Track this FID as active in the game
+
+      console.log(`✅ Player ${address} (FID: ${fid}) joined table ${this.gameId}`)
+
       this.updateGameState()
       this.broadcast({
         type: 'player-joined',
         gameId: this.gameId,
         address,
+        fid,  // Include FID in broadcast
         stack,
         timestamp: Date.now()
       })
@@ -94,6 +117,10 @@ export class GameRoom {
   removePlayer(address: string) {
     const player = this.players.get(address)
     if (player) {
+      // Remove FID from active tracking
+      this.activeFids.delete(player.fid)
+      console.log(`👋 Player ${address} (FID: ${player.fid}) left table ${this.gameId}`)
+
       this.players.delete(address)
       this.updateGameState()
       this.broadcast({
@@ -398,6 +425,7 @@ export class GameRoom {
     this.players.forEach((player, address) => {
       players[address] = {
         address: player.address,
+        fid: player.fid,  // Include FID in game state
         stack: player.stack,
         bet: player.bet,
         folded: player.folded,

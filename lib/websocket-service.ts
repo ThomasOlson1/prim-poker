@@ -70,8 +70,11 @@ export class WebSocketService {
 
   /**
    * Subscribe to a game's events
+   * @param gameId - Game/table ID to subscribe to
+   * @param playerAddress - Player's wallet address
+   * @param fid - Player's Farcaster ID (required for multi-account prevention)
    */
-  subscribeToGame(gameId: string, playerAddress?: string): void {
+  subscribeToGame(gameId: string, playerAddress?: string, fid?: number): void {
     if (this.gameSubscriptions.has(gameId)) return
 
     // Authenticate if address provided
@@ -83,6 +86,7 @@ export class WebSocketService {
     this.send({
       type: "subscribe",
       gameId,
+      fid,  // Include Farcaster ID for anti-sybil protection
     })
   }
 

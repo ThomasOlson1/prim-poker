@@ -75,6 +75,9 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus {
     // Map VRF request ID to table ID
     mapping(uint256 => uint256) public vrfRequestToTable;
 
+    // Emergency shutdown state
+    bool public emergencyShutdown;
+
     // Events
     event TableCreated(uint256 indexed tableId, uint256 smallBlind, uint256 bigBlind, uint256 minBuyIn);
     event PlayerJoined(uint256 indexed tableId, address indexed player, uint256 buyIn, uint8 seatIndex);
@@ -90,6 +93,8 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus {
     event CardRevealed(uint256 indexed tableId, address indexed player, string card1, string card2);
     event RandomSeedRequested(uint256 indexed tableId, uint256 indexed requestId);
     event RandomSeedFulfilled(uint256 indexed tableId, uint256 randomSeed);
+    event EmergencyShutdown(address indexed triggeredBy, uint256 totalRefunded);
+    event PlayerRefunded(uint256 indexed tableId, address indexed player, uint256 amount);
 
     constructor(address vrfCoordinator) VRFConsumerBaseV2Plus(vrfCoordinator) {
         // Owner is set by VRFConsumerBaseV2Plus parent contract
@@ -289,6 +294,7 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus {
         uint256 smallBlind,
         uint256 bigBlind
     ) external returns (uint256) {
+        require(!emergencyShutdown, "Contract in emergency shutdown");
         require(smallBlind > 0 && bigBlind > 0, "Blinds must be greater than zero");
         require(smallBlind < bigBlind, "Small blind must be less than big blind");
 
@@ -318,6 +324,7 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus {
      * @param tableId Table to join
      */
     function joinTable(uint256 tableId) external payable {
+        require(!emergencyShutdown, "Contract in emergency shutdown");
         require(tableId > 0 && tableId <= tableCounter, "Table does not exist");
         Table storage table = tables[tableId];
 
@@ -683,5 +690,49 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus {
         address oldServer = gameServer;
         gameServer = _gameServer;
         emit GameServerUpdated(oldServer, _gameServer);
+    }
+
+    /**
+     * @dev Emergency shutdown: If owner's wallet balance is 0, anyone can trigger
+     * this function to return all funds to players and shut down the contract.
+     * This safety mechanism protects players if something goes wrong.
+     */
+    function emergencyRefundAllPlayers() external {
+        require(!emergencyShutdown, "Already in emergency shutdown");
+        require(owner().balance == 0, "Owner balance must be 0 to trigger emergency");
+
+        emergencyShutdown = true;
+        uint256 totalRefunded = 0;
+
+        // Refund all players at all tables
+        for (uint256 tableId = 1; tableId <= tableCounter; tableId++) {
+            Table storage table = tables[tableId];
+
+            // Refund each player's chips
+            for (uint8 i = 0; i < 9; i++) {
+                address player = table.players[i];
+                if (player != address(0)) {
+                    uint256 chipCount = table.chips[player];
+
+                    // Add their share of the pot if there is one
+                    if (table.pot > 0 && table.numPlayers > 0) {
+                        chipCount += table.pot / table.numPlayers;
+                    }
+
+                    if (chipCount > 0) {
+                        table.chips[player] = 0;
+                        totalRefunded += chipCount;
+                        payable(player).transfer(chipCount);
+                        emit PlayerRefunded(tableId, player, chipCount);
+                    }
+                }
+            }
+
+            // Clear the pot
+            table.pot = 0;
+            table.isActive = false;
+        }
+
+        emit EmergencyShutdown(msg.sender, totalRefunded);
     }
 }

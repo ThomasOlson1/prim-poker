@@ -4,13 +4,14 @@ pragma solidity ^0.8.20;
 import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
 import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title PokerFlatGasFee
  * @dev Texas Hold'em Poker with dynamic gas fee model + Chainlink VRF for verifiable randomness
  * Total fee = (gas cost) + (Chainlink VRF cost) + markup ($0.20)
  */
-contract PokerFlatGasFee is VRFConsumerBaseV2Plus {
+contract PokerFlatGasFee is VRFConsumerBaseV2Plus, ReentrancyGuard {
 
     // DYNAMIC GAS FEE MODEL
     // Estimated gas units needed for distributeWinnings + other ops
@@ -272,7 +273,7 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus {
         uint256[] calldata randomWords
     ) internal override {
         uint256 tableId = vrfRequestToTable[requestId];
-        require(tableId != 0 || tables[tableId].isActive, "Invalid request");
+        require(tableId != 0 && tables[tableId].isActive, "Invalid request");
 
         Table storage table = tables[tableId];
         table.randomSeed = randomWords[0];
@@ -354,7 +355,7 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus {
      * @dev Leave table and cash out
      * @param tableId Table to leave
      */
-    function leaveTable(uint256 tableId) external {
+    function leaveTable(uint256 tableId) external nonReentrant {
         Table storage table = tables[tableId];
 
         require(table.isSeated[msg.sender], "Not seated at this table");
@@ -376,7 +377,8 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus {
         table.numPlayers--;
 
         // Transfer chips back to player
-        payable(msg.sender).transfer(chipCount);
+        (bool success, ) = payable(msg.sender).call{value: chipCount}("");
+        require(success, "Transfer failed");
 
         emit PlayerLeft(tableId, msg.sender, chipCount);
     }
@@ -429,7 +431,8 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus {
         table.handNumber++;
 
         // Send gas fee to owner
-        payable(owner()).transfer(gasFee);
+        (bool success, ) = payable(owner()).call{value: gasFee}("");
+        require(success, "Fee transfer failed");
 
         emit HandStarted(tableId, table.handNumber, toPot);
         emit BlindsPosted(tableId, sbPlayer, bbPlayer, gasFee);
@@ -678,7 +681,8 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus {
      */
     function withdrawFees() external onlyOwner {
         uint256 balance = address(this).balance;
-        payable(owner()).transfer(balance);
+        (bool success, ) = payable(owner()).call{value: balance}("");
+        require(success, "Withdrawal failed");
     }
 
     /**

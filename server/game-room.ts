@@ -1,6 +1,8 @@
 import { WebSocket, WebSocketServer } from 'ws'
 import { TurnTimer } from './turn-timer'
 import { v4 as uuidv4 } from 'uuid'
+import { ContractService } from './contract-service'
+import { ethers } from 'ethers'
 
 export interface Player {
   address: string
@@ -30,10 +32,12 @@ export class GameRoom {
   private turnTimer: TurnTimer | null = null
   private gameState: GameState
   private actionHistory: any[] = []
+  private contractService: ContractService | null
 
-  constructor(gameId: string, wss: WebSocketServer) {
+  constructor(gameId: string, wss: WebSocketServer, contractService: ContractService | null = null) {
     this.gameId = gameId
     this.wss = wss
+    this.contractService = contractService
     this.players = new Map()
     this.gameState = {
       gameId,
@@ -47,12 +51,24 @@ export class GameRoom {
     }
   }
 
-  addPlayer(address: string, ws: WebSocket) {
+  async addPlayer(address: string, ws: WebSocket) {
     if (!this.players.has(address)) {
+      // Fetch player's chip stack from contract if available
+      let stack = 0
+      if (this.contractService) {
+        try {
+          const playerInfo = await this.contractService.getPlayerInfo(this.gameId, address)
+          stack = Number(ethers.formatEther(playerInfo.chips))
+          console.log(`💰 Player ${address} has ${stack} ETH from contract`)
+        } catch (error) {
+          console.log(`⚠️  Could not fetch player info from contract:`, error)
+        }
+      }
+
       const player: Player = {
         address,
         ws,
-        stack: 0,
+        stack,
         bet: 0,
         folded: false,
         isActive: true
@@ -63,6 +79,7 @@ export class GameRoom {
         type: 'player-joined',
         gameId: this.gameId,
         address,
+        stack,
         timestamp: Date.now()
       })
     }
@@ -87,10 +104,20 @@ export class GameRoom {
     }
   }
 
-  startHand() {
+  async startHand() {
     if (this.players.size < 2) {
       console.log('❌ Not enough players to start hand')
       return
+    }
+
+    // Call contract's startNewHand if available
+    if (this.contractService) {
+      try {
+        console.log(`⛓️  Starting new hand on contract for table ${this.gameId}`)
+        await this.contractService.startNewHand(this.gameId)
+      } catch (error) {
+        console.log(`⚠️  Could not start hand on contract:`, error)
+      }
     }
 
     this.gameState.stage = 'preflop'
@@ -252,23 +279,35 @@ export class GameRoom {
     this.turnTimer.start()
   }
 
-  private endHand(winner: string) {
+  private async endHand(winner: string) {
     console.log(`🏆 Hand ended, winner: ${winner}`)
 
     this.turnTimer?.stop()
     this.gameState.stage = 'showdown'
 
-    // Award pot to winner
+    const potAmount = this.gameState.pot
+
+    // Call contract to distribute winnings if available
+    if (this.contractService && potAmount > 0) {
+      try {
+        console.log(`⛓️  Distributing ${potAmount} ETH to ${winner} on contract`)
+        await this.contractService.distributeWinnings(this.gameId, winner)
+      } catch (error) {
+        console.log(`⚠️  Could not distribute winnings on contract:`, error)
+      }
+    }
+
+    // Award pot to winner in local state
     const winnerPlayer = this.players.get(winner)
     if (winnerPlayer) {
-      winnerPlayer.stack += this.gameState.pot
+      winnerPlayer.stack += potAmount
     }
 
     this.broadcast({
       type: 'hand-ended',
       gameId: this.gameId,
       winner,
-      pot: this.gameState.pot,
+      pot: potAmount,
       timestamp: Date.now()
     })
 

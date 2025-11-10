@@ -13,9 +13,10 @@ interface CreateGameModalProps {
     turnTimeMinutes: number
     maxPlayers: number
   }) => void
+  loading?: boolean
 }
 
-export function CreateGameModal({ onClose, onCreate }: CreateGameModalProps) {
+export function CreateGameModal({ onClose, onCreate, loading }: CreateGameModalProps) {
   const [name, setName] = useState("My Game")
   const [buyInEth, setBuyInEth] = useState(0.5)
   const [blindLevel, setBlindLevel] = useState("1/2")
@@ -128,11 +129,16 @@ export function CreateGameModal({ onClose, onCreate }: CreateGameModalProps) {
             onClick={onClose}
             variant="outline"
             className="flex-1 border-gray-500/30 text-gray-300 bg-transparent"
+            disabled={loading}
           >
             Cancel
           </Button>
-          <Button onClick={handleSubmit} className="flex-1 bg-green-600 hover:bg-green-700">
-            Create Game
+          <Button
+            onClick={handleSubmit}
+            className="flex-1 bg-green-600 hover:bg-green-700"
+            disabled={loading}
+          >
+            {loading ? "Creating..." : "Create Game"}
           </Button>
         </div>
       </Card>

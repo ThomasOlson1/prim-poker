@@ -5,6 +5,16 @@ import { config as dotenvConfig } from "dotenv"
 // Load environment variables
 dotenvConfig()
 
+// Helper function to get private key with proper formatting
+function getPrivateKey(): string[] {
+  const key = process.env.PRIVATE_KEY?.trim()
+  if (!key) return []
+
+  // Remove 0x prefix if present, then ensure it has 0x prefix
+  const cleanKey = key.startsWith('0x') ? key.slice(2) : key
+  return [`0x${cleanKey}`]
+}
+
 const config: HardhatUserConfig = {
   solidity: {
     version: "0.8.20",
@@ -22,13 +32,13 @@ const config: HardhatUserConfig = {
     // Base Mainnet
     base: {
       url: "https://mainnet.base.org",
-      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      accounts: getPrivateKey(),
       chainId: 8453,
     },
     // Base Sepolia Testnet
     baseSepolia: {
       url: "https://sepolia.base.org",
-      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      accounts: getPrivateKey(),
       chainId: 84532,
     },
     // Localhost

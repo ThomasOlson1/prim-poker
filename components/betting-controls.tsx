@@ -70,7 +70,7 @@ export function BettingControls({
             size="lg"
           >
             Call
-            <span className="text-xs ml-1">${callAmount}</span>
+            <span className="text-xs ml-1">{callAmount} ETH</span>
           </Button>
         </div>
 
@@ -90,7 +90,7 @@ export function BettingControls({
               <div className="bg-slate-700/50 rounded-lg p-3">
                 <div className="flex justify-between items-center mb-2">
                   <label className="text-sm text-gray-400">Raise To</label>
-                  <span className="text-xl font-bold text-purple-400">${betAmount}</span>
+                  <span className="text-xl font-bold text-purple-400">{betAmount} ETH</span>
                 </div>
                 <Slider
                   value={[betAmount]}
@@ -102,8 +102,8 @@ export function BettingControls({
                   className="w-full"
                 />
                 <div className="flex justify-between text-xs text-gray-500 mt-2">
-                  <span>${minBet}</span>
-                  <span>${maxBet}</span>
+                  <span>{minBet} ETH</span>
+                  <span>{maxBet} ETH</span>
                 </div>
               </div>
 
@@ -111,11 +111,11 @@ export function BettingControls({
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div className="bg-slate-700/50 rounded p-2">
                   <p className="text-gray-400">Your Stack</p>
-                  <p className="text-white font-bold">${playerStack}</p>
+                  <p className="text-white font-bold">{playerStack} ETH</p>
                 </div>
                 <div className="bg-slate-700/50 rounded p-2">
                   <p className="text-gray-400">After Bet</p>
-                  <p className="text-purple-400 font-bold">${Math.max(0, remainingStack)}</p>
+                  <p className="text-purple-400 font-bold">{Math.max(0, remainingStack)} ETH</p>
                 </div>
               </div>
 
@@ -131,7 +131,7 @@ export function BettingControls({
                     className="text-xs"
                   >
                     {bet.label}
-                    <span className="text-xs ml-1">${bet.value}</span>
+                    <span className="text-xs ml-1">{bet.value} ETH</span>
                   </Button>
                 ))}
               </div>
@@ -143,7 +143,7 @@ export function BettingControls({
                 className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50"
                 size="lg"
               >
-                Raise to ${betAmount}
+                Raise to {betAmount} ETH
               </Button>
             </div>
           )}

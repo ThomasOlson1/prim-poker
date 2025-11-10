@@ -38,10 +38,10 @@ export function MyGamesScreen({ games = [], onPlayGame, onNavigateHome }: MyGame
                 <div className="flex items-center justify-between mb-3">
                   <div>
                     <h3 className="font-semibold text-white text-sm">{game.name}</h3>
-                    <p className="text-xs text-gray-400">Blinds: ${game.blinds}</p>
+                    <p className="text-xs text-gray-400">Blinds: {game.blinds} ETH</p>
                   </div>
                   <div className="text-right">
-                    <div className="text-lg font-bold text-green-400">${game.myStack}</div>
+                    <div className="text-lg font-bold text-green-400">{game.myStack} ETH</div>
                     <p className="text-xs text-gray-400">your stack</p>
                   </div>
                 </div>

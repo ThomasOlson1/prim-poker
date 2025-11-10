@@ -48,13 +48,13 @@ export function GameCard({ game, onJoin, onWatch }: GameCardProps) {
         {/* Buy-in */}
         <div className="bg-slate-700/50 rounded p-2">
           <p className="text-xs text-gray-400">Buy-in</p>
-          <p className="text-lg font-bold text-purple-400">${game.buyIn}</p>
+          <p className="text-lg font-bold text-purple-400">{game.buyIn} ETH</p>
         </div>
 
         {/* Blinds */}
         <div className="bg-slate-700/50 rounded p-2">
           <p className="text-xs text-gray-400">Blinds</p>
-          <p className="text-sm font-mono text-white">{game.blinds}</p>
+          <p className="text-sm font-mono text-white">{game.blinds} ETH</p>
         </div>
 
         {/* Speed */}
@@ -72,7 +72,7 @@ export function GameCard({ game, onJoin, onWatch }: GameCardProps) {
             <TrendingUp className="w-3 h-3" />
             Avg Pot
           </p>
-          <p className="text-lg font-bold text-yellow-400">${game.avgPot}</p>
+          <p className="text-lg font-bold text-yellow-400">{game.avgPot} ETH</p>
         </div>
       </div>
 
@@ -90,7 +90,7 @@ export function GameCard({ game, onJoin, onWatch }: GameCardProps) {
       </div>
 
       {/* Minimum Stack Info */}
-      <p className="text-xs text-gray-500 mb-4">Min stack: ${game.minStack}</p>
+      <p className="text-xs text-gray-500 mb-4">Min stack: {game.minStack} ETH</p>
 
       {/* Action Buttons */}
       <div className="flex gap-2">

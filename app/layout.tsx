@@ -2,6 +2,7 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Analytics } from "@vercel/analytics/next"
 import { NotificationsPanel } from "@/components/notifications-panel"
+import { RootProvider } from "./rootProvider"
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -51,9 +52,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`font-sans antialiased`}>
-        {children}
-        <NotificationsPanel />
-        <Analytics />
+        <RootProvider>
+          {children}
+          <NotificationsPanel />
+          <Analytics />
+        </RootProvider>
       </body>
     </html>
   )

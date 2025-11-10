@@ -3,6 +3,14 @@
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
+import {
+  ConnectWallet,
+  Wallet,
+  WalletDropdown,
+  WalletDropdownBasename,
+  WalletDropdownDisconnect,
+} from '@coinbase/onchainkit/wallet'
+import { Address, Avatar, Name, Identity } from '@coinbase/onchainkit/identity'
 
 interface GameLobbyProps {
   games?: Array<{
@@ -49,11 +57,23 @@ export function GameLobby({ games = [], onPlayGame, onNavigateToMyGames, onCreat
           <div className="text-sm text-amber-100 mt-1">$0.65 per hand to cover gas fees</div>
         </div>
 
-        {/* Wallet Info */}
-        <div className="bg-slate-800 border border-purple-500/20 rounded-lg p-4 mb-6 text-center">
-          <div className="text-sm text-gray-400 mb-1">Connected Wallet</div>
-          <div className="text-lg font-mono text-purple-400">0x7F...4C2B</div>
-          <div className="text-xs text-gray-500 mt-2">Balance: $2,500.00</div>
+        {/* Wallet Connection */}
+        <div className="bg-slate-800 border border-purple-500/20 rounded-lg p-4 mb-6">
+          <Wallet>
+            <ConnectWallet className="w-full">
+              <Avatar className="h-6 w-6" />
+              <Name />
+            </ConnectWallet>
+            <WalletDropdown>
+              <Identity className="px-4 pt-3 pb-2" hasCopyAddressOnClick>
+                <Avatar />
+                <Name />
+                <Address />
+              </Identity>
+              <WalletDropdownBasename />
+              <WalletDropdownDisconnect />
+            </WalletDropdown>
+          </Wallet>
         </div>
 
         {/* Create Game Button */}
@@ -73,10 +93,10 @@ export function GameLobby({ games = [], onPlayGame, onNavigateToMyGames, onCreat
                 <div className="flex items-center justify-between mb-3">
                   <div>
                     <h3 className="font-semibold text-white text-sm">{game.name}</h3>
-                    <p className="text-xs text-gray-400">Blinds: ${game.blinds}</p>
+                    <p className="text-xs text-gray-400">Blinds: {game.blinds} ETH</p>
                   </div>
                   <div className="text-right">
-                    <div className="text-lg font-bold text-amber-400">${game.buyIn}</div>
+                    <div className="text-lg font-bold text-amber-400">{game.buyIn} ETH</div>
                     <p className="text-xs text-gray-400">buy-in</p>
                   </div>
                 </div>
@@ -85,7 +105,7 @@ export function GameLobby({ games = [], onPlayGame, onNavigateToMyGames, onCreat
                   <div>
                     👥 {game.players}/{game.maxPlayers}
                   </div>
-                  <div>📈 Avg Pot: ${game.avgPot}</div>
+                  <div>📈 Avg Pot: {game.avgPot} ETH</div>
                 </div>
 
                 <Button

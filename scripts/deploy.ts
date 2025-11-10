@@ -5,8 +5,18 @@ const { ethers } = hre
 async function main() {
   console.log("🎲 Deploying PokerFlatGasFee contract...")
 
+  // Debug: Check if PRIVATE_KEY is loaded
+  console.log("PRIVATE_KEY loaded:", process.env.PRIVATE_KEY ? "✅ Yes" : "❌ No")
+
   // Get deployer account
-  const [deployer] = await ethers.getSigners()
+  const signers = await ethers.getSigners()
+  console.log("Number of signers:", signers.length)
+
+  if (signers.length === 0) {
+    throw new Error("No signers available. Check your PRIVATE_KEY in .env file.")
+  }
+
+  const [deployer] = signers
   console.log("Deploying with account:", deployer.address)
 
   // Get balance

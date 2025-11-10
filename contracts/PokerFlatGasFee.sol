@@ -63,7 +63,6 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus {
 
     mapping(uint256 => Table) public tables;
     uint256 public tableCounter;
-    address public owner;
     address public gameServer;
 
     // Chainlink VRF Configuration
@@ -93,7 +92,7 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus {
     event RandomSeedFulfilled(uint256 indexed tableId, uint256 randomSeed);
 
     constructor(address vrfCoordinator) VRFConsumerBaseV2Plus(vrfCoordinator) {
-        owner = msg.sender;
+        // Owner is set by VRFConsumerBaseV2Plus parent contract
     }
 
     /**
@@ -276,11 +275,6 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus {
         emit RandomSeedFulfilled(tableId, randomWords[0]);
     }
 
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Not owner");
-        _;
-    }
-
     modifier onlyGameServer() {
         require(msg.sender == gameServer, "Not game server");
         _;
@@ -422,7 +416,7 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus {
         table.handNumber++;
 
         // Send gas fee to owner
-        payable(owner).transfer(gasFee);
+        payable(owner()).transfer(gasFee);
 
         emit HandStarted(tableId, table.handNumber, toPot);
         emit BlindsPosted(tableId, sbPlayer, bbPlayer, gasFee);
@@ -663,15 +657,7 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus {
      */
     function withdrawFees() external onlyOwner {
         uint256 balance = address(this).balance;
-        payable(owner).transfer(balance);
-    }
-
-    /**
-     * @dev Transfer ownership
-     */
-    function transferOwnership(address newOwner) external onlyOwner {
-        require(newOwner != address(0), "Invalid address");
-        owner = newOwner;
+        payable(owner()).transfer(balance);
     }
 
     /**

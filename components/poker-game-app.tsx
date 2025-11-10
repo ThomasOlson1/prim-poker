@@ -5,6 +5,9 @@ import { PokerTableView } from "./poker-table-view"
 import { GameLobby } from "./game-lobby"
 import { MyGamesScreen } from "./my-games-screen"
 import { CreateGameModal } from "./create-game-modal"
+import { useCreateTable } from "@/hooks/use-poker-contract"
+import { useToast } from "@/hooks/use-toast"
+import { ethers } from "ethers"
 
 type Screen = "home" | "game" | "myGames"
 
@@ -12,45 +15,55 @@ export function PokerGameApp() {
   const [currentScreen, setCurrentScreen] = useState<Screen>("home")
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [myGames, setMyGames] = useState([
-    {
-      id: "my1",
-      name: "My Stakes Game",
-      buyIn: 50,
-      blinds: "0.5/1",
-      players: 4,
-      maxPlayers: 6,
-      timeRemaining: "2h 15m",
-      myStack: 450,
-    },
-  ])
+  const { createTable, loading: creatingTable } = useCreateTable()
+  const { toast } = useToast()
 
   const handlePlayGame = (gameId: string) => {
     setSelectedGameId(gameId)
     setCurrentScreen("game")
   }
 
-  const handleCreateGame = (gameData: {
+  const handleCreateGame = async (gameData: {
     name: string
     buyInEth: number
     blindLevel: string
     turnTimeMinutes: number
     maxPlayers: number
   }) => {
-    const newGame = {
-      id: `game-${Date.now()}`,
-      name: gameData.name,
-      buyIn: gameData.buyInEth,
-      blinds: gameData.blindLevel,
-      players: 1,
-      maxPlayers: gameData.maxPlayers,
-      timeRemaining: "Just started",
-      myStack: gameData.buyInEth,
+    try {
+      // Parse blinds (e.g., "0.5/1" -> smallBlind: 0.5, bigBlind: 1)
+      const [smallBlindStr, bigBlindStr] = gameData.blindLevel.split("/")
+      const smallBlind = ethers.parseEther(smallBlindStr.trim())
+      const bigBlind = ethers.parseEther(bigBlindStr.trim())
+
+      console.log("🎲 Creating table on contract...")
+      console.log(`   Blinds: ${smallBlindStr}/${bigBlindStr} ETH`)
+
+      // Call smart contract to create table
+      const tableId = await createTable(smallBlind, bigBlind)
+
+      if (tableId) {
+        console.log(`✅ Table created with ID: ${tableId}`)
+
+        toast({
+          title: "Table Created!",
+          description: `Table ${tableId} created successfully. You can now join it.`,
+        })
+
+        setShowCreateModal(false)
+        setSelectedGameId(tableId)
+        setCurrentScreen("game")
+      } else {
+        throw new Error("Failed to create table")
+      }
+    } catch (error) {
+      console.error("Failed to create table:", error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create table",
+        variant: "destructive",
+      })
     }
-    setMyGames([newGame, ...myGames])
-    setShowCreateModal(false)
-    setSelectedGameId(newGame.id)
-    setCurrentScreen("game")
   }
 
   const handleLeaveGame = () => {
@@ -63,7 +76,7 @@ export function PokerGameApp() {
       {currentScreen === "game" && selectedGameId ? (
         <PokerTableView gameId={selectedGameId} onLeaveGame={handleLeaveGame} onExit={handleLeaveGame} />
       ) : currentScreen === "myGames" ? (
-        <MyGamesScreen games={myGames} onPlayGame={handlePlayGame} onNavigateHome={() => setCurrentScreen("home")} />
+        <MyGamesScreen games={[]} onPlayGame={handlePlayGame} onNavigateHome={() => setCurrentScreen("home")} />
       ) : (
         <GameLobby
           onPlayGame={handlePlayGame}
@@ -72,7 +85,13 @@ export function PokerGameApp() {
         />
       )}
 
-      {showCreateModal && <CreateGameModal onClose={() => setShowCreateModal(false)} onCreate={handleCreateGame} />}
+      {showCreateModal && (
+        <CreateGameModal
+          onClose={() => setShowCreateModal(false)}
+          onCreate={handleCreateGame}
+          loading={creatingTable}
+        />
+      )}
     </>
   )
 }

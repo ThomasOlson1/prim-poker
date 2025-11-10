@@ -4,6 +4,7 @@ import { WebSocketServer } from 'ws'
 import cors from 'cors'
 import { GameRoom } from './game-room'
 import { TurnTimer } from './turn-timer'
+import { ContractService } from './contract-service'
 
 const app = express()
 const server = createServer(app)
@@ -12,6 +13,40 @@ const wss = new WebSocketServer({ server })
 // Middleware
 app.use(cors())
 app.use(express.json())
+
+// Initialize contract service if environment variables are set
+let contractService: ContractService | null = null
+const rpcUrl = process.env.RPC_URL
+const contractAddress = process.env.POKER_CONTRACT_ADDRESS
+const gameServerPrivateKey = process.env.GAME_SERVER_PRIVATE_KEY
+
+if (rpcUrl && contractAddress) {
+  console.log('⛓️  Initializing contract service...')
+  console.log(`   RPC URL: ${rpcUrl}`)
+  console.log(`   Contract: ${contractAddress}`)
+  contractService = new ContractService(rpcUrl, contractAddress, gameServerPrivateKey)
+
+  // Listen for contract events
+  contractService.onPlayerJoined(async (tableId, player, buyIn, seatIndex) => {
+    console.log(`📢 Contract Event: Player ${player} joined table ${tableId}`)
+    // Game room will be notified via WebSocket subscribe
+  })
+
+  contractService.onPlayerLeft(async (tableId, player, cashOut) => {
+    console.log(`📢 Contract Event: Player ${player} left table ${tableId}`)
+  })
+
+  contractService.onHandStarted(async (tableId, handNumber, pot) => {
+    console.log(`📢 Contract Event: Hand ${handNumber} started on table ${tableId}`)
+  })
+
+  contractService.onWinnerPaid(async (tableId, winner, amount) => {
+    console.log(`📢 Contract Event: Winner ${winner} paid ${amount} on table ${tableId}`)
+  })
+} else {
+  console.log('⚠️  Contract service not initialized (missing environment variables)')
+  console.log('   Server will run in standalone mode without blockchain integration')
+}
 
 // Game rooms storage
 const gameRooms = new Map<string, GameRoom>()
@@ -43,12 +78,12 @@ wss.on('connection', (ws, req) => {
 
           let room = gameRooms.get(gameId)
           if (!room) {
-            room = new GameRoom(gameId, wss)
+            room = new GameRoom(gameId, wss, contractService)
             gameRooms.set(gameId, room)
           }
 
           if (playerAddress) {
-            room.addPlayer(playerAddress, ws)
+            await room.addPlayer(playerAddress, ws)
             console.log(`✅ Player ${playerAddress} subscribed to game ${gameId}`)
           }
           break

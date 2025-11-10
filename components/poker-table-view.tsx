@@ -1,48 +1,40 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { useTurnNotifications } from "@/hooks/use-turn-notifications"
-
-interface Player {
-  id: string
-  name: string
-  avatar: string
-  stack: number
-  bet: number
-  hole: [string, string] | null
-  position: number
-  isActive: boolean
-  isFolded: boolean
-}
-
-interface GameState {
-  id: string
-  pot: number
-  communityCards: string[]
-  street: "preflop" | "flop" | "turn" | "river" | "showdown"
-  players: Player[]
-  activePlayerIndex: number
-  timeLeft: number
-  myStack: number
-  myHole: [string, string]
-  dealerIndex: number
-  smallBlindIndex: number
-  bigBlindIndex: number
-}
+import { useGameWebSocket } from "@/hooks/use-game-websocket"
+import { useTableInfo, usePlayerInfo, useJoinTable } from "@/hooks/use-poker-contract"
+import { useAccount } from "wagmi"
+import { useToast } from "@/hooks/use-toast"
+import { ethers } from "ethers"
 
 export function PokerTableView({
   gameId,
   onLeaveGame,
   onExit,
-  gameState,
 }: {
   gameId: string
   onLeaveGame: () => void
   onExit: () => void
-  gameState?: GameState | null
 }) {
   const [selectedBet, setSelectedBet] = useState<number | null>(null)
+  const [hasJoined, setHasJoined] = useState(false)
+
+  const { address } = useAccount()
+  const { toast } = useToast()
+
+  // Fetch table info from contract
+  const { tableInfo, loading: loadingTableInfo } = useTableInfo(gameId)
+
+  // Fetch player info from contract
+  const { playerInfo, loading: loadingPlayerInfo } = usePlayerInfo(gameId, address)
+
+  // WebSocket connection for real-time game state
+  const { gameState: wsGameState, isMyTurn, isConnected } = useGameWebSocket(gameId)
+
+  // Join table hook
+  const { joinTable, loading: joiningTable } = useJoinTable()
 
   // Enable turn notifications
   const { notificationsEnabled, requestNotificationPermission } = useTurnNotifications({
@@ -51,12 +43,96 @@ export function PokerTableView({
     enabled: true,
   })
 
-  if (!gameState) {
+  // Auto-join table when player info shows they're not seated
+  useEffect(() => {
+    if (playerInfo && !playerInfo.isSeated && !hasJoined && tableInfo && address) {
+      console.log("Player not seated, need to join table")
+    }
+  }, [playerInfo, hasJoined, tableInfo, address])
+
+  const handleJoinTable = async () => {
+    if (!tableInfo || !address) return
+
+    try {
+      // Join with minimum buy-in
+      const buyIn = tableInfo.minBuyIn
+      console.log(`💰 Joining table ${gameId} with ${ethers.formatEther(buyIn)} ETH`)
+
+      const success = await joinTable(gameId, buyIn)
+
+      if (success) {
+        setHasJoined(true)
+        toast({
+          title: "Joined Table!",
+          description: `You've joined table ${gameId}`,
+        })
+      }
+    } catch (error) {
+      console.error("Failed to join table:", error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to join table",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const isLoading = loadingTableInfo || loadingPlayerInfo
+
+  if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 safe-area-inset items-center justify-center">
         <div className="text-gray-400 text-center">
-          <div className="text-lg mb-4">Loading game...</div>
-          <div className="text-sm">Connect your backend to load game data</div>
+          <div className="text-lg mb-4">Loading table...</div>
+          <div className="text-sm">Fetching data from blockchain...</div>
+        </div>
+      </div>
+    )
+  }
+
+  // If player is not seated, show join prompt
+  if (playerInfo && !playerInfo.isSeated && tableInfo) {
+    return (
+      <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 safe-area-inset items-center justify-center">
+        <div className="bg-slate-800 p-8 rounded-lg border border-purple-500/20 max-w-md">
+          <h2 className="text-2xl font-bold text-white mb-4">Join Table #{gameId}</h2>
+          <div className="space-y-2 text-gray-300 mb-6">
+            <div>Blinds: {ethers.formatEther(tableInfo.smallBlind)}/{ethers.formatEther(tableInfo.bigBlind)} ETH</div>
+            <div>Players: {tableInfo.numPlayers}/9</div>
+            <div>Buy-in: {ethers.formatEther(tableInfo.minBuyIn)} ETH</div>
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={onExit} variant="outline" className="flex-1">
+              Back
+            </Button>
+            <Button
+              onClick={handleJoinTable}
+              disabled={joiningTable}
+              className="flex-1 bg-green-600 hover:bg-green-700"
+            >
+              {joiningTable ? "Joining..." : "Join Table"}
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Create a combined game state from WebSocket data and contract data
+  const pot = wsGameState?.pot || (tableInfo ? Number(ethers.formatEther(tableInfo.pot)) : 0)
+  const communityCards = wsGameState?.communityCards || []
+  const stage = wsGameState?.stage || 'waiting'
+  const players = wsGameState?.players ? Object.values(wsGameState.players) : []
+  const dealerIndex = wsGameState?.dealerIndex || 0
+
+  // Show waiting screen if no game state yet
+  if (!wsGameState && playerInfo?.isSeated) {
+    return (
+      <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 safe-area-inset items-center justify-center">
+        <div className="text-gray-400 text-center">
+          <div className="text-lg mb-4">Waiting for game to start...</div>
+          <div className="text-sm">WebSocket: {isConnected ? 'Connected' : 'Disconnected'}</div>
+          {players.length < 2 && <div className="text-sm mt-2">Waiting for more players...</div>}
         </div>
       </div>
     )
@@ -76,21 +152,24 @@ export function PokerTableView({
   }
 
   const renderPositionBadge = (playerIndex: number) => {
-    if (playerIndex === gameState.dealerIndex) {
+    if (playerIndex === dealerIndex) {
       return (
         <span className="absolute -top-2 -right-2 bg-yellow-500 text-black text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
           D
         </span>
       )
     }
-    if (playerIndex === gameState.smallBlindIndex) {
+    // SB and BB positions calculated from dealer (for now, simplified)
+    const sbIndex = (dealerIndex + 1) % 9
+    const bbIndex = (dealerIndex + 2) % 9
+    if (playerIndex === sbIndex) {
       return (
         <span className="absolute -top-2 -right-2 bg-blue-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
           SB
         </span>
       )
     }
-    if (playerIndex === gameState.bigBlindIndex) {
+    if (playerIndex === bbIndex) {
       return (
         <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
           BB
@@ -143,7 +222,7 @@ export function PokerTableView({
             </Button>
           )}
           <div>👥 6P</div>
-          <div>⏱ {gameState.timeLeft}s</div>
+          <div>⏱ {isMyTurn ? '30s' : '--'}</div>
         </div>
       </div>
 
@@ -155,7 +234,7 @@ export function PokerTableView({
           <div className="mb-4">
             <div className="text-xs text-gray-400 text-center mb-2">Community Cards</div>
             <div className="flex justify-center gap-1">
-              {gameState.communityCards.map((card, idx) => (
+              {communityCards.map((card, idx) => (
                 <div
                   key={idx}
                   className="w-10 h-14 bg-white rounded border border-gray-800 flex items-center justify-center text-xs font-bold text-black"
@@ -172,46 +251,39 @@ export function PokerTableView({
           {/* Pot Display */}
           <div className="bg-green-900/50 rounded-lg p-3 mb-4 text-center border border-green-700/30">
             <div className="text-xs text-gray-300 mb-1">Current Pot</div>
-            <div className="text-2xl font-bold text-amber-400">${gameState.pot}</div>
+            <div className="text-2xl font-bold text-amber-400">{pot.toFixed(4)} ETH</div>
           </div>
 
           <div className="grid grid-cols-3 gap-2 mb-4">
-            {gameState.players.map((player) => (
-              <div key={player.id} className="relative bg-slate-800/50 border border-purple-500/20 rounded-lg p-2">
+            {players.map((player, idx) => (
+              <div key={player.address} className="relative bg-slate-800/50 border border-purple-500/20 rounded-lg p-2">
                 {/* Position Badge */}
-                {renderPositionBadge(player.position)}
+                {renderPositionBadge(idx)}
 
                 <div className="flex items-center gap-1">
                   <div
                     className={`w-7 h-7 rounded-full flex items-center justify-center text-xs border flex-shrink-0 ${
-                      player.isActive
+                      wsGameState?.currentPlayer === player.address
                         ? "border-yellow-400 bg-yellow-400/10 ring-2 ring-yellow-400/50"
-                        : player.isFolded
+                        : player.folded
                           ? "border-gray-600 bg-gray-600/10 opacity-50"
                           : "border-purple-400 bg-purple-400/10"
                     }`}
                   >
-                    {player.avatar}
+                    {player.address.slice(2, 4).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs font-semibold text-white truncate">{player.name}</div>
-                    <div className="text-xs text-amber-400">${player.stack}</div>
+                    <div className="text-xs font-semibold text-white truncate">
+                      {player.address === address ? 'You' : `${player.address.slice(0, 6)}...${player.address.slice(-4)}`}
+                    </div>
+                    <div className="text-xs text-amber-400">{player.stack} ETH</div>
                   </div>
                 </div>
-                {player.bet > 0 && <div className="text-xs text-red-400 font-bold mt-1">Bet: ${player.bet}</div>}
-                {player.id === "p1" && player.hole && (
-                  <div className="flex gap-1 mt-2">
-                    {player.hole.map((card, idx) => (
-                      <div
-                        key={idx}
-                        className="flex-1 h-8 bg-white rounded border border-gray-800 flex items-center justify-center text-xs font-bold text-black"
-                      >
-                        {renderCard(card)}
-                      </div>
-                    ))}
-                  </div>
+                {player.bet > 0 && <div className="text-xs text-red-400 font-bold mt-1">Bet: {player.bet} ETH</div>}
+                {player.address === address && (
+                  <div className="text-xs text-blue-400 mt-1">Your seat</div>
                 )}
-                {player.isFolded && (
+                {player.folded && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-lg">
                     <span className="text-xs font-bold text-gray-400">FOLDED</span>
                   </div>
@@ -223,7 +295,7 @@ export function PokerTableView({
           {/* Game Status */}
           <div className="text-center mb-4">
             <div className="text-xs text-gray-400 mb-1">$1/$2 Blinds</div>
-            <div className="text-sm font-semibold text-purple-400">{gameState.street.toUpperCase()}</div>
+            <div className="text-sm font-semibold text-purple-400">{stage.toUpperCase()}</div>
           </div>
         </div>
       </div>

@@ -32,6 +32,14 @@ export function PokerGameApp() {
     maxPlayers: number
   }) => {
     try {
+      // Check if contract address is configured
+      const contractAddress = process.env.NEXT_PUBLIC_POKER_CONTRACT_ADDRESS
+      if (!contractAddress) {
+        throw new Error(
+          "Contract address not configured. Please set NEXT_PUBLIC_POKER_CONTRACT_ADDRESS in .env.local"
+        )
+      }
+
       if (!ethPrice) {
         throw new Error("ETH price not loaded. Please wait a moment and try again.")
       }

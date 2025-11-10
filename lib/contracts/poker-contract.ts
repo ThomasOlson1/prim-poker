@@ -2,8 +2,11 @@ import { ethers } from 'ethers'
 
 // Contract ABI - essential functions only
 export const POKER_CONTRACT_ABI = [
-  // Read functions
-  "function GAS_FEE() view returns (uint256)",
+  // Read functions - Dynamic Gas Fee Model
+  "function estimatedGasUnits() view returns (uint256)",
+  "function gasMarkup() view returns (uint256)",
+  "function minimumGasFee() view returns (uint256)",
+  "function getCurrentGasFee() view returns (uint256)",
   "function tableCounter() view returns (uint256)",
   "function getTableInfo(uint256 tableId) view returns (uint256 smallBlind, uint256 bigBlind, uint256 minBuyIn, uint8 numPlayers, uint256 pot, bool isActive, uint256 handNumber)",
   "function getPlayerInfo(uint256 tableId, address player) view returns (uint256 chips, bool isSeated)",
@@ -18,6 +21,9 @@ export const POKER_CONTRACT_ABI = [
   "function addToPot(uint256 tableId, address player, uint256 amount)",
   "function distributeWinnings(uint256 tableId, address winner)",
   "function setGameServer(address _gameServer)",
+  "function setGasMarkup(uint256 newMarkup)",
+  "function setEstimatedGasUnits(uint256 newUnits)",
+  "function setMinimumGasFee(uint256 newMinimum)",
 
   // Events
   "event TableCreated(uint256 indexed tableId, uint256 smallBlind, uint256 bigBlind, uint256 minBuyIn)",
@@ -28,6 +34,8 @@ export const POKER_CONTRACT_ABI = [
   "event WinnerPaid(uint256 indexed tableId, address indexed winner, uint256 amount)",
   "event GasFeeCollected(uint256 indexed tableId, uint256 amount)",
   "event GameServerUpdated(address indexed oldServer, address indexed newServer)",
+  "event GasMarkupUpdated(uint256 oldMarkup, uint256 newMarkup)",
+  "event EstimatedGasUnitsUpdated(uint256 oldUnits, uint256 newUnits)",
 ]
 
 export const POKER_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_POKER_CONTRACT_ADDRESS || ''
@@ -160,9 +168,46 @@ export class PokerContract {
     }
   }
 
-  async getGasFee(): Promise<bigint> {
+  // Dynamic Gas Fee Methods
+  async getCurrentGasFee(): Promise<bigint> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return await (this.contract as any).GAS_FEE()
+    return await (this.contract as any).getCurrentGasFee()
+  }
+
+  async getEstimatedGasUnits(): Promise<bigint> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return await (this.contract as any).estimatedGasUnits()
+  }
+
+  async getGasMarkup(): Promise<bigint> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return await (this.contract as any).gasMarkup()
+  }
+
+  async getMinimumGasFee(): Promise<bigint> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return await (this.contract as any).minimumGasFee()
+  }
+
+  async setGasMarkup(newMarkup: bigint): Promise<void> {
+    const contractWithSigner = this.contract.connect(this.signer)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tx = await (contractWithSigner as any).setGasMarkup(newMarkup)
+    await tx.wait()
+  }
+
+  async setEstimatedGasUnits(newUnits: bigint): Promise<void> {
+    const contractWithSigner = this.contract.connect(this.signer)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tx = await (contractWithSigner as any).setEstimatedGasUnits(newUnits)
+    await tx.wait()
+  }
+
+  async setMinimumGasFee(newMinimum: bigint): Promise<void> {
+    const contractWithSigner = this.contract.connect(this.signer)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tx = await (contractWithSigner as any).setMinimumGasFee(newMinimum)
+    await tx.wait()
   }
 
   async getTableCounter(): Promise<bigint> {

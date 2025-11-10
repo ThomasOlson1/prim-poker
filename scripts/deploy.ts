@@ -1,4 +1,5 @@
-import ethers from "hardhat"
+import hre from "hardhat"
+const { ethers } = hre
 
 async function main() {
   console.log("🎲 Deploying PokerFlatGasFee contract...")
@@ -11,9 +12,13 @@ async function main() {
   const balance = await ethers.provider.getBalance(deployer.address)
   console.log("Account balance:", ethers.formatEther(balance), "ETH")
 
-  // Deploy contract
+  // VRF Coordinator address from environment
+  const VRF_COORDINATOR = process.env.VRF_COORDINATOR || "0x5C210eF41CD1a72de73bF76eC39637bB0d3d7BEE"
+  console.log("VRF Coordinator:", VRF_COORDINATOR)
+
+  // Deploy contract with VRF Coordinator
   const PokerFlatGasFee = await ethers.getContractFactory("PokerFlatGasFee")
-  const poker = await PokerFlatGasFee.deploy()
+  const poker = await PokerFlatGasFee.deploy(VRF_COORDINATOR)
 
   await poker.waitForDeployment()
   const address = await poker.getAddress()

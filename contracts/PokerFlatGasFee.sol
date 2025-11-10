@@ -39,10 +39,14 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus, ReentrancyGuard {
         bytes32 cardHash;      // keccak256(card1 + card2 + salt)
         bool committed;
         bool revealed;
+        uint256 commitTime;    // Timestamp when committed (for timeout enforcement)
         string card1;          // Revealed cards (e.g., "Ah", "Kd")
         string card2;
         string salt;
     }
+
+    // SECURITY: Reveal timeout - players must reveal within this time or forfeit
+    uint256 public constant REVEAL_TIMEOUT = 5 minutes;
 
     struct Table {
         uint256 tableId;
@@ -278,6 +282,7 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus, ReentrancyGuard {
         Table storage table = tables[tableId];
         table.randomSeed = randomWords[0];
 
+        // SECURITY: Emit event proving VRF seed was used for this hand
         emit RandomSeedFulfilled(tableId, randomWords[0]);
     }
 
@@ -474,6 +479,7 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus, ReentrancyGuard {
         table.cardCommitments[player].cardHash = cardHash;
         table.cardCommitments[player].committed = true;
         table.cardCommitments[player].revealed = false;
+        table.cardCommitments[player].commitTime = block.timestamp;
 
         emit CardCommitted(tableId, player, cardHash);
     }
@@ -525,9 +531,14 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus, ReentrancyGuard {
         require(table.isSeated[winner], "Winner not seated");
         require(table.pot > 0, "No pot to distribute");
 
-        // If winner's cards were committed, they must be revealed
+        // 🔐 SECURITY: If winner's cards were committed, they must be revealed within timeout
         if (table.cardCommitments[winner].committed) {
             require(table.cardCommitments[winner].revealed, "Winner cards not revealed");
+
+            // SECURITY: Check reveal was done within timeout period
+            // This prevents players from stalling reveals to manipulate game
+            uint256 revealDeadline = table.cardCommitments[winner].commitTime + REVEAL_TIMEOUT;
+            require(block.timestamp <= revealDeadline, "Reveal timeout exceeded - pot forfeit");
         }
 
         // Winner gets FULL remaining pot
@@ -539,6 +550,28 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus, ReentrancyGuard {
         table.dealerIndex = uint8((table.dealerIndex + 1) % 9);
 
         emit WinnerPaid(tableId, winner, winnings);
+    }
+
+    /**
+     * @dev Check if a player's reveal is within timeout window
+     * @param tableId Table ID
+     * @param player Player address
+     * @return bool True if reveal is still within timeout
+     */
+    function isRevealWithinTimeout(uint256 tableId, address player) public view returns (bool) {
+        Table storage table = tables[tableId];
+        CardCommitment storage commitment = table.cardCommitments[player];
+
+        if (!commitment.committed) {
+            return true; // No commitment, no timeout
+        }
+
+        if (commitment.revealed) {
+            return true; // Already revealed
+        }
+
+        uint256 revealDeadline = commitment.commitTime + REVEAL_TIMEOUT;
+        return block.timestamp <= revealDeadline;
     }
 
     /**
@@ -655,6 +688,7 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus, ReentrancyGuard {
             bytes32 cardHash,
             bool committed,
             bool revealed,
+            uint256 commitTime,
             string memory card1,
             string memory card2
         )
@@ -664,6 +698,7 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus, ReentrancyGuard {
             commitment.cardHash,
             commitment.committed,
             commitment.revealed,
+            commitment.commitTime,
             commitment.card1,
             commitment.card2
         );

@@ -10,11 +10,25 @@ const POKER_CONTRACT_ABI = [
   "function distributeWinnings(uint256 tableId, address winner)",
   "function tableCounter() view returns (uint256)",
 
+  // Chainlink VRF functions
+  "function requestRandomSeed(uint256 tableId) returns (uint256)",
+  "function getRandomSeed(uint256 tableId) view returns (uint256)",
+
+  // Commit-reveal functions
+  "function commitCards(uint256 tableId, address player, bytes32 cardHash)",
+  "function revealCards(uint256 tableId, address player, string card1, string card2, string salt) returns (bool)",
+  "function getCardCommitment(uint256 tableId, address player) view returns (bytes32 cardHash, bool committed, bool revealed, uint256 commitTime, string card1, string card2)",
+  "function isRevealWithinTimeout(uint256 tableId, address player) view returns (bool)",
+
   "event TableCreated(uint256 indexed tableId, uint256 smallBlind, uint256 bigBlind, uint256 minBuyIn)",
   "event PlayerJoined(uint256 indexed tableId, address indexed player, uint256 buyIn, uint8 seatIndex)",
   "event PlayerLeft(uint256 indexed tableId, address indexed player, uint256 cashOut)",
   "event HandStarted(uint256 indexed tableId, uint256 handNumber, uint256 pot)",
   "event WinnerPaid(uint256 indexed tableId, address indexed winner, uint256 amount)",
+  "event CardCommitted(uint256 indexed tableId, address indexed player, bytes32 cardHash)",
+  "event CardRevealed(uint256 indexed tableId, address indexed player, string card1, string card2)",
+  "event RandomSeedRequested(uint256 indexed tableId, uint256 indexed requestId)",
+  "event RandomSeedFulfilled(uint256 indexed tableId, uint256 randomSeed)",
 ]
 
 export interface TableInfo {
@@ -122,6 +136,111 @@ export class ContractService {
   async getTableCount(): Promise<number> {
     const count = await this.contract.tableCounter()
     return Number(count)
+  }
+
+  /**
+   * Request random seed from Chainlink VRF (only callable by game server)
+   */
+  async requestRandomSeed(tableId: string): Promise<string> {
+    if (!this.signer) {
+      throw new Error('Signer required to request random seed')
+    }
+    const tx = await this.contract.requestRandomSeed(tableId)
+    const receipt = await tx.wait()
+
+    // Extract request ID from event logs
+    const event = receipt.logs.find((log: any) => {
+      try {
+        const parsed = this.contract.interface.parseLog(log)
+        return parsed?.name === 'RandomSeedRequested'
+      } catch {
+        return false
+      }
+    })
+
+    if (event) {
+      const parsed = this.contract.interface.parseLog(event)
+      return parsed!.args.requestId.toString()
+    }
+
+    throw new Error('RandomSeedRequested event not found')
+  }
+
+  /**
+   * Get random seed for a table
+   */
+  async getRandomSeed(tableId: string): Promise<bigint> {
+    const seed = await this.contract.getRandomSeed(tableId)
+    return seed
+  }
+
+  /**
+   * Commit card hash to contract (only callable by game server)
+   */
+  async commitCards(tableId: string, playerAddress: string, cardHash: string): Promise<void> {
+    if (!this.signer) {
+      throw new Error('Signer required to commit cards')
+    }
+    const tx = await this.contract.commitCards(tableId, playerAddress, cardHash)
+    await tx.wait()
+  }
+
+  /**
+   * Reveal cards and verify against commitment (only callable by game server)
+   */
+  async revealCards(
+    tableId: string,
+    playerAddress: string,
+    card1: string,
+    card2: string,
+    salt: string
+  ): Promise<boolean> {
+    if (!this.signer) {
+      throw new Error('Signer required to reveal cards')
+    }
+    const tx = await this.contract.revealCards(tableId, playerAddress, card1, card2, salt)
+    const receipt = await tx.wait()
+
+    // Check if CardRevealed event was emitted (indicates success)
+    const event = receipt.logs.find((log: any) => {
+      try {
+        const parsed = this.contract.interface.parseLog(log)
+        return parsed?.name === 'CardRevealed'
+      } catch {
+        return false
+      }
+    })
+
+    return !!event
+  }
+
+  /**
+   * Get card commitment for a player
+   */
+  async getCardCommitment(tableId: string, playerAddress: string): Promise<{
+    cardHash: string
+    committed: boolean
+    revealed: boolean
+    commitTime: bigint
+    card1: string
+    card2: string
+  }> {
+    const result = await this.contract.getCardCommitment(tableId, playerAddress)
+    return {
+      cardHash: result.cardHash,
+      committed: result.committed,
+      revealed: result.revealed,
+      commitTime: result.commitTime,
+      card1: result.card1,
+      card2: result.card2,
+    }
+  }
+
+  /**
+   * Check if player's reveal is within timeout window
+   */
+  async isRevealWithinTimeout(tableId: string, playerAddress: string): Promise<boolean> {
+    return await this.contract.isRevealWithinTimeout(tableId, playerAddress)
   }
 
   /**

@@ -1,3 +1,5 @@
+import { keccak256, toUtf8Bytes } from 'ethers'
+
 export type Suit = "H" | "D" | "C" | "S"
 export type Rank = "A" | "K" | "Q" | "J" | "10" | "9" | "8" | "7" | "6" | "5" | "4" | "3" | "2"
 
@@ -6,11 +8,19 @@ export interface Card {
   rank: Rank
 }
 
+export interface CardCommitment {
+  cardHash: string       // keccak256 hash of cards
+  salt: string           // Random salt for hashing
+  revealed: boolean
+  cards?: Card[]         // Actual cards (revealed at showdown)
+}
+
 export interface Player {
   id: string
   name: string
   stack: number
   hole: Card[]
+  cardCommitment?: CardCommitment  // Commit-reveal data
   position: "UTG" | "UTG+1" | "MP" | "CO" | "BTN" | "SB" | "BB"
   isActive: boolean
   hasFolded: boolean
@@ -52,6 +62,34 @@ export interface HandRanking {
 export class PokerEngine {
   private deck: Card[] = []
   private gameState: GameState | null = null
+
+  /**
+   * Generate random salt for card commitment
+   */
+  private generateSalt(): string {
+    const array = new Uint8Array(32)
+    crypto.getRandomValues(array)
+    return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('')
+  }
+
+  /**
+   * Create card hash for commit-reveal
+   * Hash format: keccak256(card1String + card2String + salt)
+   */
+  private createCardHash(cards: Card[], salt: string): string {
+    const card1Str = `${cards[0].rank}${cards[0].suit}`
+    const card2Str = `${cards[1].rank}${cards[1].suit}`
+    const dataToHash = card1Str + card2Str + salt
+    return keccak256(toUtf8Bytes(dataToHash))
+  }
+
+  /**
+   * Verify revealed cards match commitment
+   */
+  verifyCardCommitment(cards: Card[], salt: string, expectedHash: string): boolean {
+    const computedHash = this.createCardHash(cards, salt)
+    return computedHash === expectedHash
+  }
 
   /**
    * Initialize a new Texas Hold'em game
@@ -142,12 +180,50 @@ export class PokerEngine {
   }
 
   /**
-   * Deal 2 hole cards to each player (Texas Hold'em)
+   * Deal 2 hole cards to each player (Texas Hold'em) with commit-reveal
    */
   private dealHoleCards(gameState: GameState): void {
     for (const player of gameState.players) {
-      player.hole = [this.deck.pop()!, this.deck.pop()!]
+      // Deal actual cards
+      const cards = [this.deck.pop()!, this.deck.pop()!]
+      player.hole = cards
+
+      // Create commitment (hash the cards with random salt)
+      const salt = this.generateSalt()
+      const cardHash = this.createCardHash(cards, salt)
+
+      player.cardCommitment = {
+        cardHash,
+        salt,
+        revealed: false,
+        cards: undefined  // Cards only revealed at showdown
+      }
     }
+  }
+
+  /**
+   * Reveal cards at showdown (automatic verification)
+   */
+  revealCards(playerId: string): boolean {
+    if (!this.gameState) return false
+
+    const player = this.gameState.players.find(p => p.id === playerId)
+    if (!player || !player.cardCommitment) return false
+
+    // Verify the commitment matches the actual cards
+    const isValid = this.verifyCardCommitment(
+      player.hole,
+      player.cardCommitment.salt,
+      player.cardCommitment.cardHash
+    )
+
+    if (isValid) {
+      player.cardCommitment.revealed = true
+      player.cardCommitment.cards = player.hole
+      return true
+    }
+
+    return false
   }
 
   /**
@@ -485,6 +561,7 @@ export class PokerEngine {
     // Clear previous hand data
     for (const player of this.gameState.players) {
       player.hole = []
+      player.cardCommitment = undefined  // Clear previous commitments
       player.hasFolded = false
       player.currentBet = 0
       player.totalBetThisRound = 0
@@ -503,5 +580,64 @@ export class PokerEngine {
 
     this.postBlinds(this.gameState)
     this.dealHoleCards(this.gameState)
+  }
+
+  /**
+   * Get sanitized game state for a specific player (hides other players' hole cards)
+   */
+  getGameStateForPlayer(playerId: string): GameState | null {
+    if (!this.gameState) return null
+
+    // Deep clone the game state
+    const sanitizedState: GameState = JSON.parse(JSON.stringify(this.gameState))
+
+    // Hide hole cards for other players (only show hashes)
+    for (const player of sanitizedState.players) {
+      if (player.id !== playerId && !player.cardCommitment?.revealed) {
+        // Don't send actual hole cards, only the commitment hash
+        player.hole = []
+      }
+    }
+
+    return sanitizedState
+  }
+
+  /**
+   * Handle showdown - automatically reveal and verify all active players' cards
+   */
+  handleShowdown(): { winner: string; verified: boolean } | null {
+    if (!this.gameState || this.gameState.gameStage !== 'showdown') return null
+
+    const activePlayers = this.gameState.players.filter(p => !p.hasFolded && p.isActive)
+
+    if (activePlayers.length === 0) return null
+
+    // Automatically reveal and verify all active players' cards
+    for (const player of activePlayers) {
+      const revealed = this.revealCards(player.id)
+      if (!revealed) {
+        console.error(`Failed to verify cards for player ${player.id}`)
+        return { winner: '', verified: false }
+      }
+    }
+
+    // Determine winner by evaluating hands
+    let bestPlayer = activePlayers[0]
+    let bestHand = this.evaluateHand(bestPlayer.hole, this.gameState.community)
+
+    for (let i = 1; i < activePlayers.length; i++) {
+      const player = activePlayers[i]
+      const hand = this.evaluateHand(player.hole, this.gameState.community)
+
+      if (hand.rank > bestHand.rank) {
+        bestHand = hand
+        bestPlayer = player
+      }
+    }
+
+    return {
+      winner: bestPlayer.id,
+      verified: true
+    }
   }
 }

@@ -78,7 +78,6 @@ export class BrowserNotificationService {
         badge: '/poker-chip.png',
         tag: `turn-${gameId}`, // Replace previous turn notifications
         requireInteraction: true, // Keep visible until user interacts
-        vibrate: [200, 100, 200], // Vibration pattern for mobile
         data: {
           gameId,
           type: 'turn',
@@ -117,7 +116,7 @@ export class BrowserNotificationService {
   /**
    * Clear all notifications for a game
    */
-  static clearGameNotifications(gameId: string): void {
+  static clearGameNotifications(_gameId: string): void {
     // Note: Can't programmatically close notifications created by this page
     // They're automatically replaced by tag or user dismisses them
   }

@@ -9,19 +9,19 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
-    "ws": "^8.18.0",
-    "express": "^4.21.2",
     "cors": "^2.8.5",
-    "uuid": "^11.0.4",
     "dotenv": "^16.4.7",
-    "ethers": "^6.15.0"
+    "ethers": "^6.15.0",
+    "express": "^4.21.2",
+    "uuid": "^11.0.4",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
-    "@types/ws": "^8.5.13",
-    "@types/express": "^5.0.0",
     "@types/cors": "^2.8.17",
-    "@types/uuid": "^10.0.0",
+    "@types/express": "^5.0.0",
     "@types/node": "^20.17.12",
+    "@types/uuid": "^10.0.0",
+    "@types/ws": "^8.5.13",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.3"
   }

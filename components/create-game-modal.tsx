@@ -166,7 +166,7 @@ export function CreateGameModal({ onClose, onCreate, loading }: CreateGameModalP
             <label className="text-xs text-gray-300 font-semibold">Max Players: {maxPlayers}</label>
             <input
               type="range"
-              min="2"
+              min="4"
               max="9"
               step="1"
               value={maxPlayers}

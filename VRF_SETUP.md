@@ -16,15 +16,36 @@ This poker game uses **Chainlink VRF (Verifiable Random Function)** to ensure pr
 
 Total fee per hand = **Gas Fee + VRF Fee + $0.20 Markup**
 
-- **Gas Fee**: Dynamic based on current gas price (~60k gas units)
-- **VRF Fee**: ~0.0001 ETH per request (varies by chain)
-- **Markup**: $0.20 profit margin
+### Dynamic VRF Cost Calculation
 
-Example: At 20 gwei gas price
-- Gas: 60,000 × 20 gwei = 0.0012 ETH
-- VRF: 0.0001 ETH
+The VRF cost is **dynamically calculated** using Chainlink's pricing formula:
+
+```
+Total Gas = Verification Gas + Callback Gas
+Total Gas Cost (ETH) = Total Gas × Current Gas Price
+Cost with Premium = Total Gas Cost × ((100 + Premium%) / 100)
+VRF Cost in ETH = Cost with Premium / (LINK/ETH Price)
+```
+
+**Parameters:**
+- **Verification Gas**: ~200,000 gas (Chainlink's VRF verification cost)
+- **Callback Gas**: 100,000 gas (gas limit for `fulfillRandomWords`)
+- **Premium**: 20% (Chainlink's network fee)
+- **LINK/ETH Price**: Retrieved from Chainlink price oracle in real-time
+
+### Example Calculation
+
+At 20 gwei gas price with LINK/ETH = 0.005:
+- Total Gas: 200,000 + 100,000 = 300,000 gas
+- Gas Cost: 300,000 × 20 gwei = 0.006 ETH
+- With Premium: 0.006 × 1.20 = 0.0072 ETH
+- VRF Cost: 0.0072 / 0.005 = **0.00036 ETH**
+
+**Total Fee Breakdown:**
+- Base Gas: 60,000 × 20 gwei = 0.0012 ETH
+- VRF: 0.00036 ETH (dynamically calculated)
 - Markup: 0.0001 ETH
-- **Total**: 0.0014 ETH (~$2.80 at $2000/ETH)
+- **Total**: 0.00156 ETH (~$3.12 at $2000/ETH)
 
 ## Setup Instructions
 
@@ -58,14 +79,18 @@ PokerFlatGasFee poker = new PokerFlatGasFee(vrfCoordinator);
 // Set game server address
 poker.setGameServer(YOUR_GAME_SERVER_ADDRESS);
 
-// Configure VRF
+// Configure VRF subscription and key hash
 poker.configureVRF(
     YOUR_SUBSCRIPTION_ID,      // From step 1
     KEY_HASH                   // Gas lane (see below)
 );
 
-// Adjust VRF cost if needed
-poker.setVrfRequestCost(0.0001 ether);
+// REQUIRED: Set LINK/ETH price feed for dynamic cost calculation
+poker.setLinkEthPriceFeed(LINK_ETH_PRICE_FEED_ADDRESS);
+
+// Optional: Adjust VRF parameters if needed
+poker.setVrfVerificationGas(200000);      // Default: 200k gas
+poker.setVrfPremiumPercentage(20);        // Default: 20%
 ```
 
 **Key Hash (Gas Lane) Options:**
@@ -78,6 +103,22 @@ Ethereum Mainnet:
 
 Polygon Mainnet:
 - 500 gwei: `0xcc294a196eeeb44da2888d17c0625cc88d70d9760a69d58d853ba6581a9ab0cd`
+
+**LINK/ETH Price Feed Addresses:**
+
+Ethereum Mainnet:
+- `0xDC530D9457755926550b59e8ECcdaE7624181557`
+
+Sepolia Testnet:
+- `0x42585eD362B3f1BCa95c640FdFf35Ef899212734`
+
+Polygon Mainnet:
+- `0xb77fa460604b9C6928E8C3913B7df2Ea4e4eC5e8`
+
+Base Mainnet:
+- `0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70`
+
+For other networks, find price feeds at: https://docs.chain.link/data-feeds/price-feeds/addresses
 
 ### 4. Add Contract as Consumer
 

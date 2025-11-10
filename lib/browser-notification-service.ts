@@ -78,7 +78,6 @@ export class BrowserNotificationService {
         badge: '/poker-chip.png',
         tag: `turn-${gameId}`, // Replace previous turn notifications
         requireInteraction: true, // Keep visible until user interacts
-        vibrate: [200, 100, 200], // Vibration pattern for mobile
         data: {
           gameId,
           type: 'turn',

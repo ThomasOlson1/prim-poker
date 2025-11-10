@@ -24,17 +24,17 @@ export function CreateGameModal({ onClose, onCreate, loading }: CreateGameModalP
   const [maxPlayers, setMaxPlayers] = useState(6)
 
   const BLIND_LEVELS = [
-    { value: "0.01/0.02", display: "$0.01/$0.02 ETH" },
-    { value: "0.05/0.1", display: "$0.05/$0.10 ETH" },
-    { value: "0.1/0.2", display: "$0.10/$0.20 ETH" },
-    { value: "0.5/1", display: "$0.50/$1 ETH" },
-    { value: "1/2", display: "$1/$2 ETH" },
-    { value: "2/5", display: "$2/$5 ETH" },
-    { value: "5/10", display: "$5/$10 ETH" },
-    { value: "10/20", display: "$10/$20 ETH" },
-    { value: "25/50", display: "$25/$50 ETH" },
-    { value: "50/100", display: "$50/$100 ETH" },
-    { value: "100/200", display: "$100/$200 ETH" },
+    { value: "0.01/0.02", display: "$0.01/$0.02 (0.01 ETH/0.02 ETH)" },
+    { value: "0.05/0.1", display: "$0.05/$0.10 (0.05 ETH/0.10 ETH)" },
+    { value: "0.1/0.2", display: "$0.10/$0.20 (0.10 ETH/0.20 ETH)" },
+    { value: "0.5/1", display: "$0.50/$1 (0.50 ETH/1 ETH)" },
+    { value: "1/2", display: "$1/$2 (1 ETH/2 ETH)" },
+    { value: "2/5", display: "$2/$5 (2 ETH/5 ETH)" },
+    { value: "5/10", display: "$5/$10 (5 ETH/10 ETH)" },
+    { value: "10/20", display: "$10/$20 (10 ETH/20 ETH)" },
+    { value: "25/50", display: "$25/$50 (25 ETH/50 ETH)" },
+    { value: "50/100", display: "$50/$100 (50 ETH/100 ETH)" },
+    { value: "100/200", display: "$100/$200 (100 ETH/200 ETH)" },
   ]
 
   // Calculate buy-in constraints based on blind level (50bb-200bb)

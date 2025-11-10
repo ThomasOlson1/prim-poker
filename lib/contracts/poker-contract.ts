@@ -2,8 +2,11 @@ import { ethers } from 'ethers'
 
 // Contract ABI - essential functions only
 export const POKER_CONTRACT_ABI = [
-  // Read functions
-  "function GAS_FEE() view returns (uint256)",
+  // Read functions - Dynamic Gas Fee Model
+  "function estimatedGasUnits() view returns (uint256)",
+  "function gasMarkup() view returns (uint256)",
+  "function minimumGasFee() view returns (uint256)",
+  "function getCurrentGasFee() view returns (uint256)",
   "function tableCounter() view returns (uint256)",
   "function getTableInfo(uint256 tableId) view returns (uint256 smallBlind, uint256 bigBlind, uint256 minBuyIn, uint8 numPlayers, uint256 pot, bool isActive, uint256 handNumber)",
   "function getPlayerInfo(uint256 tableId, address player) view returns (uint256 chips, bool isSeated)",
@@ -18,6 +21,9 @@ export const POKER_CONTRACT_ABI = [
   "function addToPot(uint256 tableId, address player, uint256 amount)",
   "function distributeWinnings(uint256 tableId, address winner)",
   "function setGameServer(address _gameServer)",
+  "function setGasMarkup(uint256 newMarkup)",
+  "function setEstimatedGasUnits(uint256 newUnits)",
+  "function setMinimumGasFee(uint256 newMinimum)",
 
   // Events
   "event TableCreated(uint256 indexed tableId, uint256 smallBlind, uint256 bigBlind, uint256 minBuyIn)",
@@ -28,6 +34,8 @@ export const POKER_CONTRACT_ABI = [
   "event WinnerPaid(uint256 indexed tableId, address indexed winner, uint256 amount)",
   "event GasFeeCollected(uint256 indexed tableId, uint256 amount)",
   "event GameServerUpdated(address indexed oldServer, address indexed newServer)",
+  "event GasMarkupUpdated(uint256 oldMarkup, uint256 newMarkup)",
+  "event EstimatedGasUnitsUpdated(uint256 oldUnits, uint256 newUnits)",
 ]
 
 export const POKER_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_POKER_CONTRACT_ADDRESS || ''
@@ -56,15 +64,13 @@ export class PokerContract {
     this.signer = signer
   }
 
-  /**
-   * Create a new poker table
-   */
   async createTable(smallBlind: bigint, bigBlind: bigint): Promise<string> {
     const contractWithSigner = this.contract.connect(this.signer)
-    const tx = await contractWithSigner.createTable(smallBlind, bigBlind)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tx = await (contractWithSigner as any).createTable(smallBlind, bigBlind)
     const receipt = await tx.wait()
 
-    // Parse TableCreated event to get tableId
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const event = receipt.logs.find((log: any) => {
       try {
         const parsed = this.contract.interface.parseLog(log)
@@ -82,65 +88,51 @@ export class PokerContract {
     throw new Error('Failed to get table ID from transaction')
   }
 
-  /**
-   * Join a table with buy-in
-   */
   async joinTable(tableId: string, buyIn: bigint): Promise<void> {
     const contractWithSigner = this.contract.connect(this.signer)
-    const tx = await contractWithSigner.joinTable(tableId, { value: buyIn })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tx = await (contractWithSigner as any).joinTable(tableId, { value: buyIn })
     await tx.wait()
   }
 
-  /**
-   * Leave table and cash out
-   */
   async leaveTable(tableId: string): Promise<void> {
     const contractWithSigner = this.contract.connect(this.signer)
-    const tx = await contractWithSigner.leaveTable(tableId)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tx = await (contractWithSigner as any).leaveTable(tableId)
     await tx.wait()
   }
 
-  /**
-   * Start a new hand
-   */
   async startNewHand(tableId: string): Promise<void> {
     const contractWithSigner = this.contract.connect(this.signer)
-    const tx = await contractWithSigner.startNewHand(tableId)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tx = await (contractWithSigner as any).startNewHand(tableId)
     await tx.wait()
   }
 
-  /**
-   * Add chips to pot (bet/raise)
-   */
   async addToPot(tableId: string, playerAddress: string, amount: bigint): Promise<void> {
     const contractWithSigner = this.contract.connect(this.signer)
-    const tx = await contractWithSigner.addToPot(tableId, playerAddress, amount)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tx = await (contractWithSigner as any).addToPot(tableId, playerAddress, amount)
     await tx.wait()
   }
 
-  /**
-   * Distribute winnings to winner
-   */
   async distributeWinnings(tableId: string, winner: string): Promise<void> {
     const contractWithSigner = this.contract.connect(this.signer)
-    const tx = await contractWithSigner.distributeWinnings(tableId, winner)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tx = await (contractWithSigner as any).distributeWinnings(tableId, winner)
     await tx.wait()
   }
 
-  /**
-   * Set the game server address (owner only)
-   */
   async setGameServer(gameServerAddress: string): Promise<void> {
     const contractWithSigner = this.contract.connect(this.signer)
-    const tx = await contractWithSigner.setGameServer(gameServerAddress)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tx = await (contractWithSigner as any).setGameServer(gameServerAddress)
     await tx.wait()
   }
 
-  /**
-   * Get table information
-   */
   async getTableInfo(tableId: string): Promise<TableInfo> {
-    const result = await this.contract.getTableInfo(tableId)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await (this.contract as any).getTableInfo(tableId)
     return {
       smallBlind: result.smallBlind,
       bigBlind: result.bigBlind,
@@ -152,57 +144,83 @@ export class PokerContract {
     }
   }
 
-  /**
-   * Get player information at table
-   */
   async getPlayerInfo(tableId: string, playerAddress: string): Promise<PlayerInfo> {
-    const result = await this.contract.getPlayerInfo(tableId, playerAddress)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await (this.contract as any).getPlayerInfo(tableId, playerAddress)
     return {
       chips: result.chips,
       isSeated: result.isSeated,
     }
   }
 
-  /**
-   * Get all players at table
-   */
   async getPlayers(tableId: string): Promise<string[]> {
-    const players = await this.contract.getPlayers(tableId)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const players = await (this.contract as any).getPlayers(tableId)
     return players.filter((addr: string) => addr !== ethers.ZeroAddress)
   }
 
-  /**
-   * Check if stakes are viable
-   */
   async isViableStakes(smallBlind: bigint, bigBlind: bigint): Promise<{ viable: boolean; reason: string }> {
-    const result = await this.contract.isViableStakes(smallBlind, bigBlind)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await (this.contract as any).isViableStakes(smallBlind, bigBlind)
     return {
       viable: result.viable,
       reason: result.reason,
     }
   }
 
-  /**
-   * Get gas fee constant
-   */
-  async getGasFee(): Promise<bigint> {
-    return await this.contract.GAS_FEE()
+  // Dynamic Gas Fee Methods
+  async getCurrentGasFee(): Promise<bigint> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return await (this.contract as any).getCurrentGasFee()
   }
 
-  /**
-   * Get total number of tables
-   */
+  async getEstimatedGasUnits(): Promise<bigint> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return await (this.contract as any).estimatedGasUnits()
+  }
+
+  async getGasMarkup(): Promise<bigint> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return await (this.contract as any).gasMarkup()
+  }
+
+  async getMinimumGasFee(): Promise<bigint> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return await (this.contract as any).minimumGasFee()
+  }
+
+  async setGasMarkup(newMarkup: bigint): Promise<void> {
+    const contractWithSigner = this.contract.connect(this.signer)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tx = await (contractWithSigner as any).setGasMarkup(newMarkup)
+    await tx.wait()
+  }
+
+  async setEstimatedGasUnits(newUnits: bigint): Promise<void> {
+    const contractWithSigner = this.contract.connect(this.signer)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tx = await (contractWithSigner as any).setEstimatedGasUnits(newUnits)
+    await tx.wait()
+  }
+
+  async setMinimumGasFee(newMinimum: bigint): Promise<void> {
+    const contractWithSigner = this.contract.connect(this.signer)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tx = await (contractWithSigner as any).setMinimumGasFee(newMinimum)
+    await tx.wait()
+  }
+
   async getTableCounter(): Promise<bigint> {
-    return await this.contract.tableCounter()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return await (this.contract as any).tableCounter()
   }
 
-  /**
-   * Listen to contract events
-   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   on(eventName: string, callback: (...args: any[]) => void) {
     this.contract.on(eventName, callback)
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   off(eventName: string, callback: (...args: any[]) => void) {
     this.contract.off(eventName, callback)
   }

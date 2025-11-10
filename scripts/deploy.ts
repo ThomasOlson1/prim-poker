@@ -1,4 +1,4 @@
-import { ethers } from "hardhat"
+import ethers from "hardhat"
 
 async function main() {
   console.log("🎲 Deploying PokerFlatGasFee contract...")
@@ -62,7 +62,7 @@ async function main() {
   // Calculate effective rake
   const totalBlinds = smallBlind + bigBlind
   const toPot = totalBlinds - currentGasFee
-  const effectiveRake = (currentGasFee * BigInt(100)) / toPot
+  const effectiveRake = (currentGasFee * 100n) / toPot
   console.log("\n💰 Fee Analysis:")
   console.log("- Total blinds:", ethers.formatEther(totalBlinds), "ETH")
   console.log("- Gas fee:", ethers.formatEther(currentGasFee), "ETH")

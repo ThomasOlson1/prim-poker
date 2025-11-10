@@ -19,6 +19,16 @@ contract PokerFlatGasFee {
     // Minimum fee to prevent going too low
     uint256 public minimumGasFee = 0.00005 ether; // Minimum $0.10 worth
 
+    // Card commitment structure for commit-reveal
+    struct CardCommitment {
+        bytes32 cardHash;      // keccak256(card1 + card2 + salt)
+        bool committed;
+        bool revealed;
+        string card1;          // Revealed cards (e.g., "Ah", "Kd")
+        string card2;
+        string salt;
+    }
+
     struct Table {
         uint256 tableId;
         uint256 smallBlind;
@@ -27,6 +37,7 @@ contract PokerFlatGasFee {
         address[9] players;
         mapping(address => uint256) chips;
         mapping(address => bool) isSeated;
+        mapping(address => CardCommitment) cardCommitments; // Commitments for current hand
         uint256 pot;
         uint8 dealerIndex;
         uint8 numPlayers;
@@ -50,6 +61,8 @@ contract PokerFlatGasFee {
     event GameServerUpdated(address indexed oldServer, address indexed newServer);
     event GasMarkupUpdated(uint256 oldMarkup, uint256 newMarkup);
     event EstimatedGasUnitsUpdated(uint256 oldUnits, uint256 newUnits);
+    event CardCommitted(uint256 indexed tableId, address indexed player, bytes32 cardHash);
+    event CardRevealed(uint256 indexed tableId, address indexed player, string card1, string card2);
 
     constructor() {
         owner = msg.sender;
@@ -214,6 +227,14 @@ contract PokerFlatGasFee {
         require(table.numPlayers >= 2, "Need at least 2 players");
         require(table.pot == 0, "Hand already in progress");
 
+        // Clear card commitments from previous hand
+        for (uint8 i = 0; i < 9; i++) {
+            address player = table.players[i];
+            if (player != address(0)) {
+                delete table.cardCommitments[player];
+            }
+        }
+
         // Get blind positions
         uint8 sbPos = findPlayerPosition(tableId, table.dealerIndex + 1);
         uint8 bbPos = findPlayerPosition(tableId, table.dealerIndex + 2);
@@ -266,6 +287,65 @@ contract PokerFlatGasFee {
     }
 
     /**
+     * @dev Commit card hash for a player (called during deal)
+     * @param tableId Table ID
+     * @param player Player address
+     * @param cardHash Hash of cards (keccak256(card1 + card2 + salt))
+     */
+    function commitCards(
+        uint256 tableId,
+        address player,
+        bytes32 cardHash
+    ) external onlyGameServer {
+        Table storage table = tables[tableId];
+
+        require(table.isSeated[player], "Player not seated");
+        require(!table.cardCommitments[player].committed, "Already committed");
+
+        table.cardCommitments[player].cardHash = cardHash;
+        table.cardCommitments[player].committed = true;
+        table.cardCommitments[player].revealed = false;
+
+        emit CardCommitted(tableId, player, cardHash);
+    }
+
+    /**
+     * @dev Reveal and verify cards (called at showdown)
+     * @param tableId Table ID
+     * @param player Player address
+     * @param card1 First card (e.g., "Ah")
+     * @param card2 Second card (e.g., "Kd")
+     * @param salt Random salt used in commitment
+     */
+    function revealCards(
+        uint256 tableId,
+        address player,
+        string calldata card1,
+        string calldata card2,
+        string calldata salt
+    ) external onlyGameServer returns (bool) {
+        Table storage table = tables[tableId];
+        CardCommitment storage commitment = table.cardCommitments[player];
+
+        require(commitment.committed, "No commitment found");
+        require(!commitment.revealed, "Already revealed");
+
+        // Verify the hash matches
+        bytes32 computedHash = keccak256(abi.encodePacked(card1, card2, salt));
+        require(computedHash == commitment.cardHash, "Card verification failed");
+
+        // Store revealed cards
+        commitment.card1 = card1;
+        commitment.card2 = card2;
+        commitment.salt = salt;
+        commitment.revealed = true;
+
+        emit CardRevealed(tableId, player, card1, card2);
+
+        return true;
+    }
+
+    /**
      * @dev Distribute winnings to winner(s)
      * @param tableId Table ID
      * @param winner Winner address
@@ -275,6 +355,11 @@ contract PokerFlatGasFee {
 
         require(table.isSeated[winner], "Winner not seated");
         require(table.pot > 0, "No pot to distribute");
+
+        // If winner's cards were committed, they must be revealed
+        if (table.cardCommitments[winner].committed) {
+            require(table.cardCommitments[winner].revealed, "Winner cards not revealed");
+        }
 
         // Winner gets FULL remaining pot
         uint256 winnings = table.pot;
@@ -381,6 +466,30 @@ contract PokerFlatGasFee {
         returns (address[9] memory)
     {
         return tables[tableId].players;
+    }
+
+    /**
+     * @dev Get card commitment for a player
+     */
+    function getCardCommitment(uint256 tableId, address player)
+        external
+        view
+        returns (
+            bytes32 cardHash,
+            bool committed,
+            bool revealed,
+            string memory card1,
+            string memory card2
+        )
+    {
+        CardCommitment storage commitment = tables[tableId].cardCommitments[player];
+        return (
+            commitment.cardHash,
+            commitment.committed,
+            commitment.revealed,
+            commitment.card1,
+            commitment.card2
+        );
     }
 
     /**

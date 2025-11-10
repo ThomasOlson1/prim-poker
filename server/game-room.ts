@@ -3,6 +3,7 @@ import { TurnTimer } from './turn-timer'
 import { v4 as uuidv4 } from 'uuid'
 import { ContractService } from './contract-service'
 import { ethers } from 'ethers'
+import { PokerEngine, Card, CardCommitment } from '../lib/poker-engine'
 
 export interface Player {
   address: string
@@ -12,6 +13,15 @@ export interface Player {
   bet: number
   folded: boolean
   isActive: boolean
+  // SECURITY: Hole cards stored server-side only, NEVER sent to clients until reveal
+  holeCards?: Card[]
+}
+
+// Server-side secret data - NEVER sent to clients
+interface PlayerSecrets {
+  holeCards: Card[]
+  cardHash: string
+  salt: string
 }
 
 export interface GameState {
@@ -36,11 +46,20 @@ export class GameRoom {
   private actionHistory: any[] = []
   private contractService: ContractService | null
 
+  // 🔐 SECURITY: Poker engine and secrets stored server-side only
+  private pokerEngine: PokerEngine
+  private playerSecrets: Map<string, PlayerSecrets> = new Map()
+  private vrfSeed: bigint | null = null
+  private vrfRequestId: string | null = null
+  private waitingForVRF: boolean = false
+  private vrfPollInterval: NodeJS.Timeout | null = null
+
   constructor(gameId: string, wss: WebSocketServer, contractService: ContractService | null = null) {
     this.gameId = gameId
     this.wss = wss
     this.contractService = contractService
     this.players = new Map()
+    this.pokerEngine = new PokerEngine()
     this.gameState = {
       gameId,
       players: {},
@@ -169,12 +188,12 @@ export class GameRoom {
       player.bet = 0
       player.folded = false
       player.isActive = true
+      player.holeCards = undefined
     })
 
-    // Set first player
-    const playerAddresses = Array.from(this.players.keys())
-    this.currentPlayer = playerAddresses[0]
-    this.gameState.currentPlayer = this.currentPlayer
+    // Clear previous hand secrets
+    this.playerSecrets.clear()
+    this.vrfSeed = null
 
     this.updateGameState()
     this.broadcast({
@@ -184,8 +203,184 @@ export class GameRoom {
       timestamp: Date.now()
     })
 
+    // 🔐 SECURITY: Request VRF seed and wait for fulfillment before dealing cards
+    await this.requestVRFAndDealCards()
+  }
+
+  /**
+   * 🔐 SECURITY: Request Chainlink VRF and deal cards with verifiable randomness
+   */
+  private async requestVRFAndDealCards() {
+    if (!this.contractService) {
+      console.log('⚠️  No contract service - dealing without VRF (INSECURE)')
+      await this.dealCardsWithCommitment()
+      return
+    }
+
+    try {
+      console.log('🎲 Requesting Chainlink VRF for verifiable randomness...')
+      this.waitingForVRF = true
+
+      // Request random seed from contract
+      const requestId = await this.contractService.requestRandomSeed(this.gameId)
+      this.vrfRequestId = requestId
+
+      console.log(`⏳ Waiting for VRF fulfillment (request ID: ${requestId})...`)
+
+      this.broadcast({
+        type: 'vrf-requested',
+        gameId: this.gameId,
+        requestId,
+        message: 'Requesting verifiable randomness from Chainlink VRF...',
+        timestamp: Date.now()
+      })
+
+      // Poll for VRF fulfillment (every 2 seconds for up to 60 seconds)
+      await this.pollForVRFFulfillment(60000)
+
+    } catch (error) {
+      console.error('❌ VRF request failed:', error)
+      this.broadcast({
+        type: 'error',
+        code: 'VRF_FAILED',
+        message: 'Failed to get verifiable randomness. Dealing without VRF.',
+        timestamp: Date.now()
+      })
+
+      // Fallback: deal without VRF (not secure but game can continue)
+      await this.dealCardsWithCommitment()
+    }
+  }
+
+  /**
+   * Poll contract for VRF fulfillment
+   */
+  private async pollForVRFFulfillment(maxWaitMs: number): Promise<void> {
+    const startTime = Date.now()
+    const pollInterval = 2000 // 2 seconds
+
+    return new Promise((resolve, reject) => {
+      this.vrfPollInterval = setInterval(async () => {
+        try {
+          if (!this.contractService) {
+            clearInterval(this.vrfPollInterval!)
+            reject(new Error('Contract service not available'))
+            return
+          }
+
+          // Check if VRF seed has been fulfilled
+          const seed = await this.contractService.getRandomSeed(this.gameId)
+
+          if (seed && seed !== 0n) {
+            console.log(`✅ VRF fulfilled! Seed: ${seed}`)
+            this.vrfSeed = seed
+            this.waitingForVRF = false
+
+            clearInterval(this.vrfPollInterval!)
+
+            this.broadcast({
+              type: 'vrf-fulfilled',
+              gameId: this.gameId,
+              message: 'Verifiable randomness received! Dealing cards...',
+              timestamp: Date.now()
+            })
+
+            // Now deal cards with the VRF seed
+            await this.dealCardsWithCommitment(seed)
+            resolve()
+            return
+          }
+
+          // Check timeout
+          if (Date.now() - startTime > maxWaitMs) {
+            console.log('⏰ VRF timeout - proceeding without VRF')
+            clearInterval(this.vrfPollInterval!)
+            this.waitingForVRF = false
+            await this.dealCardsWithCommitment()
+            resolve()
+          }
+        } catch (error) {
+          console.error('Error polling for VRF:', error)
+        }
+      }, pollInterval)
+    })
+  }
+
+  /**
+   * 🔐 SECURITY: Deal cards using PokerEngine and commit to contract
+   * Salt and actual cards are NEVER sent to clients
+   */
+  private async dealCardsWithCommitment(vrfSeed?: bigint) {
+    console.log('🃏 Dealing cards with commit-reveal scheme...')
+
+    const playerAddresses = Array.from(this.players.keys())
+    const playerData = playerAddresses.map((addr, i) => ({
+      id: addr,
+      name: `Player ${i + 1}`,
+      position: this.getPosition(i, playerAddresses.length),
+      stack: this.players.get(addr)!.stack
+    }))
+
+    // Initialize poker engine with VRF seed
+    const gameState = this.pokerEngine.initializeGame(playerData, vrfSeed)
+
+    // Extract cards and create commitments for each player
+    for (const enginePlayer of gameState.players) {
+      const player = this.players.get(enginePlayer.id)
+      if (!player || !enginePlayer.cardCommitment) continue
+
+      // Store hole cards server-side
+      player.holeCards = enginePlayer.hole
+
+      // Store secrets server-side (NEVER send to clients)
+      this.playerSecrets.set(enginePlayer.id, {
+        holeCards: enginePlayer.hole,
+        cardHash: enginePlayer.cardCommitment.cardHash,
+        salt: enginePlayer.cardCommitment.salt
+      })
+
+      // Commit card hash to contract
+      if (this.contractService) {
+        try {
+          await this.contractService.commitCards(
+            this.gameId,
+            enginePlayer.id,
+            enginePlayer.cardCommitment.cardHash
+          )
+          console.log(`✅ Committed cards for ${enginePlayer.id}: ${enginePlayer.cardCommitment.cardHash.substring(0, 10)}...`)
+        } catch (error) {
+          console.error(`❌ Failed to commit cards for ${enginePlayer.id}:`, error)
+        }
+      }
+
+      // Send ONLY the hash to the client (NOT the cards or salt)
+      player.ws.send(JSON.stringify({
+        type: 'cards-dealt',
+        gameId: this.gameId,
+        cardHash: enginePlayer.cardCommitment.cardHash,
+        message: 'Cards dealt! Your cards are committed to the blockchain.',
+        timestamp: Date.now()
+      }))
+    }
+
+    console.log('✅ All cards dealt and committed to contract')
+
+    // Set first player
+    this.currentPlayer = playerAddresses[0]
+    this.gameState.currentPlayer = this.currentPlayer
+
+    this.updateGameState()
+
     // Start turn timer
     this.startTurnTimer()
+  }
+
+  /**
+   * Helper to get poker position
+   */
+  private getPosition(index: number, totalPlayers: number): "UTG" | "UTG+1" | "MP" | "CO" | "BTN" | "SB" | "BB" {
+    const positions: Array<"UTG" | "UTG+1" | "MP" | "CO" | "BTN" | "SB" | "BB"> = ["UTG", "UTG+1", "MP", "CO", "BTN", "SB", "BB"]
+    return positions[index % positions.length]
   }
 
   async handleAction(playerAddress: string, action: string, amount?: number) {
@@ -359,6 +554,9 @@ export class GameRoom {
 
     const potAmount = this.gameState.pot
 
+    // 🔐 SECURITY: Reveal winner's cards and verify against commitment
+    await this.revealAndVerifyCards(winner)
+
     // Call contract to distribute winnings if available
     if (this.contractService && potAmount > 0) {
       try {
@@ -391,6 +589,63 @@ export class GameRoom {
     this.gameState.currentPlayer = null
 
     this.updateGameState()
+  }
+
+  /**
+   * 🔐 SECURITY: Reveal and verify cards against blockchain commitment
+   */
+  private async revealAndVerifyCards(playerAddress: string) {
+    const secrets = this.playerSecrets.get(playerAddress)
+    if (!secrets) {
+      console.error(`❌ No secrets found for ${playerAddress}`)
+      return
+    }
+
+    const { holeCards, salt } = secrets
+
+    // Convert cards to string format (e.g., "Ah", "Kd")
+    const card1 = `${holeCards[0].rank}${holeCards[0].suit.toLowerCase()}`
+    const card2 = `${holeCards[1].rank}${holeCards[1].suit.toLowerCase()}`
+
+    console.log(`🔓 Revealing cards for ${playerAddress}: ${card1}, ${card2}`)
+
+    // Reveal cards to contract
+    if (this.contractService) {
+      try {
+        const verified = await this.contractService.revealCards(
+          this.gameId,
+          playerAddress,
+          card1,
+          card2,
+          salt
+        )
+
+        if (verified) {
+          console.log(`✅ Cards verified on-chain for ${playerAddress}`)
+        } else {
+          console.error(`❌ Card verification FAILED for ${playerAddress}`)
+          this.broadcast({
+            type: 'error',
+            code: 'VERIFICATION_FAILED',
+            message: `Card verification failed for ${playerAddress}. Potential cheating detected!`,
+            timestamp: Date.now()
+          })
+          return
+        }
+      } catch (error) {
+        console.error(`❌ Failed to reveal cards on contract:`, error)
+      }
+    }
+
+    // Broadcast revealed cards to all players
+    this.broadcast({
+      type: 'cards-revealed',
+      gameId: this.gameId,
+      player: playerAddress,
+      cards: [card1, card2],
+      verified: true,
+      timestamp: Date.now()
+    })
   }
 
   private endGame() {

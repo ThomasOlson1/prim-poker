@@ -395,7 +395,7 @@ describe("PokerFlatGasFee", function () {
     it("Should reject non-owner updating gas markup", async function () {
       await expect(
         poker.connect(player1).setGasMarkup(ethers.parseEther("0.0002"))
-      ).to.be.revertedWithCustomError(poker, "OwnableUnauthorizedAccount")
+      ).to.be.revertedWith("Not owner")
     })
 
     it("Should allow owner to update estimated gas units", async function () {
@@ -439,7 +439,7 @@ describe("PokerFlatGasFee", function () {
     it("Should reject non-owner changing game server", async function () {
       await expect(
         poker.connect(player1).setGameServer(player2.address)
-      ).to.be.revertedWithCustomError(poker, "OwnableUnauthorizedAccount")
+      ).to.be.revertedWith("Not owner")
     })
 
     it("Should emit GameServerUpdated event", async function () {
@@ -597,21 +597,21 @@ describe("PokerFlatGasFee", function () {
 
     it("Should handle player running out of chips", async function () {
       await poker.connect(player1).joinTable(1, { value: MIN_BUY_IN })
-
-      const playerInfo = await poker.getPlayerInfo(1, player1.address)
-      const allChips = playerInfo.chips
-
-      // Player bets all their chips
       await poker.connect(player2).joinTable(1, { value: MIN_BUY_IN })
       await poker.connect(gameServer).startNewHand(1)
 
-      // Bet almost all chips
-      await poker.connect(gameServer).addToPot(1, player1.address, allChips - ethers.parseEther("0.01"))
+      // Get chips after blinds are posted
+      const playerInfo = await poker.getPlayerInfo(1, player1.address)
+      const chipsAfterBlinds = playerInfo.chips
+
+      // Bet almost all remaining chips
+      const betAmount = chipsAfterBlinds - ethers.parseEther("0.001")
+      await poker.connect(gameServer).addToPot(1, player1.address, betAmount)
 
       // Player should still have some chips
       const playerInfo2 = await poker.getPlayerInfo(1, player1.address)
       expect(playerInfo2.chips).to.be.greaterThan(0)
-      expect(playerInfo2.chips).to.be.lessThan(ethers.parseEther("0.01"))
+      expect(playerInfo2.chips).to.be.lessThan(ethers.parseEther("0.002"))
     })
 
     it("Should prevent integer overflow on large pots", async function () {

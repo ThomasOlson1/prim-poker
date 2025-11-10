@@ -276,7 +276,7 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus {
     }
 
     modifier onlyGameServer() {
-        require(msg.sender == gameServer, "Not game server");
+        require(msg.sender == gameServer, "Only game server can call this");
         _;
     }
 
@@ -379,6 +379,7 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus {
      * @param tableId Table ID
      */
     function startNewHand(uint256 tableId) external onlyGameServer {
+        require(tableId > 0 && tableId <= tableCounter, "Table does not exist");
         Table storage table = tables[tableId];
 
         require(table.isActive, "Table not active");
@@ -437,7 +438,7 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus {
     function addToPot(uint256 tableId, address player, uint256 amount) external onlyGameServer {
         Table storage table = tables[tableId];
 
-        require(table.isSeated[player], "Not seated");
+        require(table.isSeated[player], "Player not seated");
         require(table.chips[player] >= amount, "Insufficient chips");
 
         table.chips[player] -= amount;

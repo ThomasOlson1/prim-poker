@@ -397,7 +397,7 @@ describe("PokerFlatGasFee", function () {
     it("Should reject non-owner updating gas markup", async function () {
       await expect(
         poker.connect(player1).setGasMarkup(ethers.parseEther("0.0002"))
-      ).to.be.revertedWith("Not owner")
+      ).to.be.revertedWith("Only callable by owner")
     })
 
     it("Should allow owner to update estimated gas units", async function () {
@@ -441,7 +441,7 @@ describe("PokerFlatGasFee", function () {
     it("Should reject non-owner changing game server", async function () {
       await expect(
         poker.connect(player1).setGameServer(player2.address)
-      ).to.be.revertedWith("Not owner")
+      ).to.be.revertedWith("Only callable by owner")
     })
 
     it("Should emit GameServerUpdated event", async function () {

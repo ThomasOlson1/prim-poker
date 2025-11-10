@@ -46,13 +46,13 @@ export function GameLobby({ games = [], onPlayGame, onNavigateToMyGames, onCreat
 
   // Format gas fee for display
   const formatGasFee = () => {
-    if (!gasFee || !ethPrice) return '$0.65' // Fallback to default value
+    if (!gasFee || !ethPrice) return 'Loading...' // Loading state
     try {
       const ethAmount = ethers.formatEther(gasFee)
       const dollarAmount = parseFloat(ethAmount) * ethPrice
       return `$${dollarAmount.toFixed(2)}`
     } catch {
-      return '$0.65' // Fallback on error
+      return 'Error' // Fallback on error
     }
   }
 
@@ -69,8 +69,8 @@ export function GameLobby({ games = [], onPlayGame, onNavigateToMyGames, onCreat
         </div>
 
         <div className="bg-amber-900/40 border border-amber-600/50 rounded-lg p-3 mb-6 text-center">
-          <div className="text-xs text-amber-200 font-semibold">Flat Rake Casino</div>
-          <div className="text-sm text-amber-100 mt-1">{formatGasFee()} per hand to cover gas fees</div>
+          <div className="text-xs text-amber-200 font-semibold">Dynamic Gas-Based Rake</div>
+          <div className="text-sm text-amber-100 mt-1">{formatGasFee()} per hand (adjusts with network fees)</div>
         </div>
 
         {/* Wallet Connection */}

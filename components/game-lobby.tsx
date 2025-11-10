@@ -11,7 +11,7 @@ import {
   WalletDropdownDisconnect,
 } from '@coinbase/onchainkit/wallet'
 import { Address, Avatar, Name, Identity } from '@coinbase/onchainkit/identity'
-import { useCurrentGasFee } from '@/hooks/use-poker-contract'
+import { useCurrentGasFee, useEthPrice } from '@/hooks/use-poker-contract'
 import { ethers } from 'ethers'
 
 interface GameLobbyProps {
@@ -33,6 +33,7 @@ export function GameLobby({ games = [], onPlayGame, onNavigateToMyGames, onCreat
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null)
   const [isJoining, setIsJoining] = useState(false)
   const { gasFee } = useCurrentGasFee()
+  const { ethPrice } = useEthPrice()
 
   const handleJoinGame = (gameId: string) => {
     setSelectedGameId(gameId)
@@ -45,11 +46,10 @@ export function GameLobby({ games = [], onPlayGame, onNavigateToMyGames, onCreat
 
   // Format gas fee for display
   const formatGasFee = () => {
-    if (!gasFee) return '$0.65' // Fallback to default value
+    if (!gasFee || !ethPrice) return '$0.65' // Fallback to default value
     try {
       const ethAmount = ethers.formatEther(gasFee)
-      // Assuming 1 ETH = $3000 for display purposes (you can make this dynamic later)
-      const dollarAmount = parseFloat(ethAmount) * 3000
+      const dollarAmount = parseFloat(ethAmount) * ethPrice
       return `$${dollarAmount.toFixed(2)}`
     } catch {
       return '$0.65' // Fallback on error

@@ -16,7 +16,7 @@ export class WebSocketService {
   private listeners: Map<string, Set<EventHandler>> = new Map()
   private gameSubscriptions: Set<string> = new Set()
 
-  constructor(url: string = process.env.NEXT_PUBLIC_WS_URL || "wss://poker.example.com/ws") {
+  constructor(url: string = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8080") {
     this.url = url
   }
 

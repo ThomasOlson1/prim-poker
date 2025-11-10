@@ -1,0 +1,20 @@
+# Render Blueprint for Prim Poker Backend
+# Deploy this to Render for 24/7 WebSocket server hosting
+
+services:
+  # WebSocket Backend Server
+  - type: web
+    name: prim-poker-backend
+    runtime: node
+    region: oregon  # Change to your preferred region
+    plan: free  # Can upgrade to starter ($7/mo) or higher
+    rootDir: server
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000  # Render's default port for web services
+    autoDeploy: true  # Auto-deploy on git push

@@ -22,19 +22,23 @@ export const minikitConfig = {
     name: "Prim's Poker",
     subtitle: "Turn-based poker game on Base",
     description: "Play turn-based poker with friends on Farcaster. Bet with ETH, get real-time notifications, and enjoy a seamless on-chain gaming experience.",
-    screenshotUrls: [`${ROOT_URL}/hero-poker.jpg`],
-    iconUrl: `${ROOT_URL}/icon-512x512.jpg`,
-    // IMPORTANT: splashImageUrl MUST be 200x200px per Farcaster requirements
+    // screenshotUrls: Portrait screenshots (1284x2778)
+    screenshotUrls: [`${ROOT_URL}/screenshot-portrait.jpg`],
+    // iconUrl: Must be 1024x1024 PNG (no alpha)
+    iconUrl: `${ROOT_URL}/icon-1024x1024.png`,
+    // splashImageUrl: Must be 200x200px
     splashImageUrl: `${ROOT_URL}/splash.jpg`,
     splashBackgroundColor: "#0f172a",
     homeUrl: ROOT_URL,
     webhookUrl: `${ROOT_URL}/api/webhook`,
     primaryCategory: "games",
     tags: ["poker", "gaming", "social", "betting", "eth"],
-    heroImageUrl: `${ROOT_URL}/hero-poker.jpg`,
+    // heroImageUrl: 1200x630 (1.91:1 ratio)
+    heroImageUrl: `${ROOT_URL}/hero-poker-1200x630.jpg`,
     tagline: "Deal, Bet, Win - On-chain Poker for Farcaster",
     ogTitle: "Prim's Poker - Turn-based Poker on Base",
     ogDescription: "Play turn-based poker with friends on Farcaster. Bet with ETH and get real-time notifications.",
-    ogImageUrl: `${ROOT_URL}/og-image.jpg`,
+    // ogImageUrl: 1200x630 PNG (1.91:1 ratio)
+    ogImageUrl: `${ROOT_URL}/og-image-1200x630.png`,
   },
 } as const;

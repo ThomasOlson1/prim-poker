@@ -31,7 +31,7 @@ export function PokerTableVisualization({ players, pot, community, dealerButton:
         {/* Pot Display */}
         <div className="text-center mb-8">
           <p className="text-gray-400 text-sm mb-1">Pot</p>
-          <p className="text-4xl font-bold text-yellow-400">{pot} ETH</p>
+          <p className="text-4xl font-bold text-yellow-400">${pot}</p>
         </div>
 
         {/* Community Cards */}
@@ -71,10 +71,10 @@ export function PokerTableVisualization({ players, pot, community, dealerButton:
               </div>
 
               {/* Stack */}
-              <p className="text-xs text-gray-400">Stack: {player.stack} ETH</p>
+              <p className="text-xs text-gray-400">Stack: ${player.stack}</p>
 
               {/* Current Bet */}
-              {player.bet > 0 && <div className="text-sm font-bold text-yellow-400">Bet: {player.bet} ETH</div>}
+              {player.bet > 0 && <div className="text-sm font-bold text-yellow-400">Bet: ${player.bet}</div>}
 
               {/* Status */}
               {player.isCurrentPlayer && (

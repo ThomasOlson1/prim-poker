@@ -93,10 +93,10 @@ export function GameLobby({ games = [], onPlayGame, onNavigateToMyGames, onCreat
                 <div className="flex items-center justify-between mb-3">
                   <div>
                     <h3 className="font-semibold text-white text-sm">{game.name}</h3>
-                    <p className="text-xs text-gray-400">Blinds: {game.blinds} ETH</p>
+                    <p className="text-xs text-gray-400">Blinds: ${game.blinds}</p>
                   </div>
                   <div className="text-right">
-                    <div className="text-lg font-bold text-amber-400">{game.buyIn} ETH</div>
+                    <div className="text-lg font-bold text-amber-400">${game.buyIn}</div>
                     <p className="text-xs text-gray-400">buy-in</p>
                   </div>
                 </div>
@@ -105,7 +105,7 @@ export function GameLobby({ games = [], onPlayGame, onNavigateToMyGames, onCreat
                   <div>
                     👥 {game.players}/{game.maxPlayers}
                   </div>
-                  <div>📈 Avg Pot: {game.avgPot} ETH</div>
+                  <div>📈 Avg Pot: ${game.avgPot}</div>
                 </div>
 
                 <Button

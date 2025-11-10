@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
+import { useTurnNotifications } from "@/hooks/use-turn-notifications"
 
 interface Player {
   id: string
@@ -31,7 +32,7 @@ interface GameState {
 }
 
 export function PokerTableView({
-  gameId: _gameId,
+  gameId,
   onLeaveGame,
   onExit,
   gameState,
@@ -42,6 +43,13 @@ export function PokerTableView({
   gameState?: GameState | null
 }) {
   const [selectedBet, setSelectedBet] = useState<number | null>(null)
+
+  // Enable turn notifications
+  const { notificationsEnabled, requestNotificationPermission } = useTurnNotifications({
+    gameId,
+    tableName: `Table #${gameId}`,
+    enabled: true,
+  })
 
   if (!gameState) {
     return (
@@ -123,6 +131,17 @@ export function PokerTableView({
           </Button>
         </div>
         <div className="flex items-center gap-2 text-xs text-gray-300">
+          {!notificationsEnabled && (
+            <Button
+              onClick={requestNotificationPermission}
+              variant="ghost"
+              size="sm"
+              className="text-yellow-400 hover:text-yellow-300 text-xs h-8"
+              title="Enable turn notifications"
+            >
+              🔔
+            </Button>
+          )}
           <div>👥 6P</div>
           <div>⏱ {gameState.timeLeft}s</div>
         </div>

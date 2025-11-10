@@ -1,16 +1,52 @@
 "use client"
 
-import { useCallback } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { FarcasterService, type GameNotification } from "@/lib/farcaster-service"
+import { BrowserNotificationService } from "@/lib/browser-notification-service"
+
+export interface TurnNotificationOptions {
+  gameId: string
+  timeRemaining: number
+  tableName?: string
+}
 
 export function useNotifications() {
-  const sendTurnNotification = useCallback(async (gameId: string, playerName: string) => {
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false)
+
+  // Check notification permission on mount
+  useEffect(() => {
+    if (BrowserNotificationService.isSupported()) {
+      const { granted } = BrowserNotificationService.getPermissionStatus()
+      setNotificationsEnabled(granted)
+    }
+  }, [])
+
+  // Request notification permission
+  const requestNotificationPermission = useCallback(async () => {
+    const granted = await BrowserNotificationService.requestPermission()
+    setNotificationsEnabled(granted)
+    return granted
+  }, [])
+
+  // Send turn notification with time remaining
+  const sendTurnNotification = useCallback(async (options: TurnNotificationOptions) => {
+    const { gameId, timeRemaining, tableName } = options
+
+    // Send browser notification
+    await BrowserNotificationService.sendTurnNotification(
+      gameId,
+      timeRemaining,
+      tableName
+    )
+
+    // Also send Farcaster notification (optional, as backup)
+    const tableDisplay = tableName || `Table #${gameId}`
     const notification: GameNotification = {
       id: `turn-${gameId}-${Date.now()}`,
       gameId,
       type: "turn",
-      title: "Your Turn to Play!",
-      message: `It's your turn in game #${gameId}. Make your move!`,
+      title: "Your Turn!",
+      message: `${timeRemaining}s remaining at ${tableDisplay}`,
       timestamp: Date.now(),
     }
 
@@ -57,6 +93,8 @@ export function useNotifications() {
   }, [])
 
   return {
+    notificationsEnabled,
+    requestNotificationPermission,
     sendTurnNotification,
     sendGameStartNotification,
     sendGameEndNotification,

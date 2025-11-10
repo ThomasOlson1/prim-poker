@@ -5,6 +5,24 @@ import { NotificationsPanel } from "@/components/notifications-panel"
 import { RootProvider } from "./rootProvider"
 import './globals.css'
 
+const ROOT_URL = process.env.NEXT_PUBLIC_URL || "https://prim-poker.vercel.app";
+
+// Farcaster Mini App Embed configuration
+const farcasterEmbed = {
+  version: "1",
+  imageUrl: `${ROOT_URL}/hero-poker-1200x630.jpg`,
+  button: {
+    title: "🎰 Play Poker",
+    action: {
+      type: "launch_frame",
+      name: "Prim's Poker",
+      url: ROOT_URL,
+      splashImageUrl: `${ROOT_URL}/splash.jpg`,
+      splashBackgroundColor: "#0f172a",
+    },
+  },
+};
+
 export const metadata: Metadata = {
   title: "Prim's Poker - Turn-Based Cash Games",
   description:
@@ -13,11 +31,11 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Prim's Poker",
     description: "Turn-based Texas Hold'em mini dapp on Farcaster",
-    url: "https://poker.farcaster.xyz",
+    url: ROOT_URL,
     siteName: "Prim's Poker",
     images: [
       {
-        url: "/hero-poker.jpg",
+        url: "/hero-poker-1200x630.jpg",
         width: 1200,
         height: 630,
         alt: "Prim's Poker",
@@ -41,6 +59,12 @@ export const metadata: Metadata = {
       },
     ],
     apple: "/apple-icon.png",
+  },
+  other: {
+    // Farcaster Mini App Embed meta tags
+    "fc:miniapp": JSON.stringify(farcasterEmbed),
+    // Backward compatibility for legacy Mini Apps
+    "fc:frame": JSON.stringify(farcasterEmbed),
   },
 }
 

@@ -2,6 +2,7 @@
   "name": "prim-poker",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "prebuild": "npx tsx scripts/generate-manifest.ts",

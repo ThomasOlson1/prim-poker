@@ -5,8 +5,21 @@ import { config as dotenvConfig } from "dotenv"
 // Load environment variables
 dotenvConfig()
 
-// Helper function to get private key with proper formatting
-function getPrivateKey(): string[] {
+// Helper function to get accounts configuration
+// Supports both private key and mnemonic (12-word seed phrase)
+function getAccounts() {
+  // Option 1: Use mnemonic (12-word seed phrase)
+  const mnemonic = process.env.MNEMONIC?.trim()
+  if (mnemonic) {
+    return {
+      mnemonic: mnemonic,
+      path: "m/44'/60'/0'/0", // Standard Ethereum derivation path
+      initialIndex: 0,
+      count: 10, // Derive 10 accounts
+    }
+  }
+
+  // Option 2: Use private key directly
   const key = process.env.PRIVATE_KEY?.trim()
   if (!key) return []
 
@@ -32,13 +45,13 @@ const config: HardhatUserConfig = {
     // Base Mainnet
     base: {
       url: "https://mainnet.base.org",
-      accounts: getPrivateKey(),
+      accounts: getAccounts(),
       chainId: 8453,
     },
     // Base Sepolia Testnet
     baseSepolia: {
       url: "https://sepolia.base.org",
-      accounts: getPrivateKey(),
+      accounts: getAccounts(),
       chainId: 84532,
     },
     // Localhost

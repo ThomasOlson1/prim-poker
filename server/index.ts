@@ -58,7 +58,7 @@ wss.on('connection', (ws, req) => {
   let playerAddress: string | null = null
   let currentGameId: string | null = null
 
-  ws.on('message', (data) => {
+  ws.on('message', async (data) => {
     try {
       const message = JSON.parse(data.toString())
       console.log('📨 Received:', message.type, message)

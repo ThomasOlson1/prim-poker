@@ -59,10 +59,25 @@ export class WebSocketService {
   }
 
   /**
+   * Authenticate with player address
+   */
+  authenticate(address: string): void {
+    this.send({
+      type: "authenticate",
+      address: address.toLowerCase(),
+    })
+  }
+
+  /**
    * Subscribe to a game's events
    */
-  subscribeToGame(gameId: string): void {
+  subscribeToGame(gameId: string, playerAddress?: string): void {
     if (this.gameSubscriptions.has(gameId)) return
+
+    // Authenticate if address provided
+    if (playerAddress) {
+      this.authenticate(playerAddress)
+    }
 
     this.gameSubscriptions.add(gameId)
     this.send({

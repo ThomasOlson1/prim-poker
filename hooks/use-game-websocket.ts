@@ -36,16 +36,16 @@ export function useGameWebSocket(gameId: string | null) {
 
   // Subscribe to game when connected
   useEffect(() => {
-    if (!isConnected || !gameId) return
+    if (!isConnected || !gameId || !address) return
 
-    console.log('🎮 Subscribing to game:', gameId)
-    subscribe(gameId)
+    console.log('🎮 Subscribing to game:', gameId, 'with address:', address)
+    subscribe(gameId, address)
 
     return () => {
       console.log('🎮 Unsubscribing from game:', gameId)
       unsubscribe(gameId)
     }
-  }, [isConnected, gameId, subscribe, unsubscribe])
+  }, [isConnected, gameId, address, subscribe, unsubscribe])
 
   // Listen for game state updates
   useEffect(() => {

@@ -23,8 +23,8 @@ export function useWebSocket() {
     }
   }, [])
 
-  const subscribe = (gameId: string) => {
-    wsRef.current?.subscribeToGame(gameId)
+  const subscribe = (gameId: string, playerAddress?: string) => {
+    wsRef.current?.subscribeToGame(gameId, playerAddress)
   }
 
   const unsubscribe = (gameId: string) => {

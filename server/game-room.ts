@@ -82,6 +82,12 @@ export class GameRoom {
         stack,
         timestamp: Date.now()
       })
+
+      // Auto-start hand when 4 players join
+      if (this.players.size === 4 && this.gameState.stage === 'waiting') {
+        console.log('🎲 4 players joined! Auto-starting hand...')
+        setTimeout(() => this.startHand(), 2000) // Give 2 seconds delay
+      }
     }
   }
 
@@ -101,12 +107,18 @@ export class GameRoom {
       if (this.currentPlayer === address) {
         this.nextPlayer()
       }
+
+      // End game if only 1 player remains
+      if (this.players.size === 1) {
+        console.log('🏆 Game over! Only 1 player remains.')
+        this.endGame()
+      }
     }
   }
 
   async startHand() {
-    if (this.players.size < 2) {
-      console.log('❌ Not enough players to start hand')
+    if (this.players.size < 4) {
+      console.log('❌ Not enough players to start hand (need 4 players)')
       return
     }
 
@@ -315,6 +327,32 @@ export class GameRoom {
     this.gameState.dealerIndex = (this.gameState.dealerIndex + 1) % this.players.size
     this.gameState.pot = 0
     this.gameState.stage = 'waiting'
+    this.currentPlayer = null
+    this.gameState.currentPlayer = null
+
+    this.updateGameState()
+  }
+
+  private endGame() {
+    console.log('🏆 Ending game...')
+
+    // Stop any active timers
+    this.turnTimer?.stop()
+
+    // Get the winner (last remaining player)
+    const winner = Array.from(this.players.keys())[0]
+
+    this.broadcast({
+      type: 'game-ended',
+      gameId: this.gameId,
+      winner,
+      timestamp: Date.now()
+    })
+
+    // Reset game state
+    this.gameState.stage = 'waiting'
+    this.gameState.pot = 0
+    this.gameState.communityCards = []
     this.currentPlayer = null
     this.gameState.currentPlayer = null
 

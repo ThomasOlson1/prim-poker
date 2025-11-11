@@ -12,7 +12,11 @@ export function usePokerContract() {
   const [isInitialized, setIsInitialized] = useState(false)
 
   useEffect(() => {
+    console.log('🔧 usePokerContract: walletClient:', walletClient ? 'Connected' : 'Not connected')
+    console.log('🔧 usePokerContract: address:', address)
+
     if (!walletClient) {
+      console.log('⚠️ No wallet client - contract not initialized')
       setContract(null)
       setIsInitialized(false)
       return
@@ -20,22 +24,24 @@ export function usePokerContract() {
 
     const initContract = async () => {
       try {
+        console.log('🔧 Initializing contract...')
         // Convert wagmi WalletClient to ethers provider and signer
         const provider = new ethers.BrowserProvider(walletClient as any)
         const signer = await provider.getSigner()
 
         const pokerContract = new PokerContract(provider, signer)
+        console.log('✅ Contract initialized successfully')
         setContract(pokerContract)
         setIsInitialized(true)
       } catch (error) {
-        console.error('Failed to initialize contract:', error)
+        console.error('❌ Failed to initialize contract:', error)
         setContract(null)
         setIsInitialized(false)
       }
     }
 
     initContract()
-  }, [walletClient])
+  }, [walletClient, address])
 
   return {
     contract,

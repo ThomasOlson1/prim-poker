@@ -69,8 +69,8 @@ export class PokerContract {
     const contractWithSigner = this.contract.connect(this.signer)
 
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       console.log('🔵 Sending transaction to contract...')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const tx = await (contractWithSigner as any).createTable(smallBlind, bigBlind)
       console.log('🔵 Transaction sent! Hash:', tx.hash)
       console.log('🔵 Waiting for confirmation...')

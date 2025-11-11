@@ -72,9 +72,9 @@ export class WebSocketService {
    * Subscribe to a game's events
    * @param gameId - Game/table ID to subscribe to
    * @param playerAddress - Player's wallet address
-   * @param fid - Player's Farcaster ID (optional, not used)
+   * @param _fid - Player's Farcaster ID (optional, not used)
    */
-  subscribeToGame(gameId: string, playerAddress?: string, fid?: number): void {
+  subscribeToGame(gameId: string, playerAddress?: string, _fid?: number): void {
     if (this.gameSubscriptions.has(gameId)) return
 
     // Authenticate if address provided

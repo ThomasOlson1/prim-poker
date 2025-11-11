@@ -13,10 +13,12 @@ export function PokerTableView({
   gameId,
   onLeaveGame,
   onExit,
+  onJoinSuccess,
 }: {
   gameId: string
   onLeaveGame: () => void
   onExit: () => void
+  onJoinSuccess?: () => void
 }) {
   const [selectedBet, setSelectedBet] = useState<number | null>(null)
   const [hasJoined, setHasJoined] = useState(false)
@@ -77,8 +79,13 @@ export function PokerTableView({
         setHasJoined(true)
         toast({
           title: "Joined Table!",
-          description: `You've joined table ${gameId}`,
+          description: `You've joined table ${gameId}. Check My Games to see it.`,
         })
+
+        // Navigate to My Games after a short delay so user sees the success message
+        setTimeout(() => {
+          onJoinSuccess?.()
+        }, 1500)
       }
     } catch (error) {
       console.error("Failed to join table:", error)

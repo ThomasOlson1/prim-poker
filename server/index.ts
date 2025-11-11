@@ -14,6 +14,10 @@ const wss = new WebSocketServer({ server })
 app.use(cors())
 app.use(express.json())
 
+// Configuration
+const REQUIRE_FARCASTER_AUTH = process.env.REQUIRE_FARCASTER_AUTH !== 'false'
+console.log(`🔐 Farcaster authentication: ${REQUIRE_FARCASTER_AUTH ? 'REQUIRED' : 'OPTIONAL (localhost mode)'}`)
+
 // Initialize contract service if environment variables are set
 let contractService: ContractService | null = null
 const rpcUrl = process.env.RPC_URL
@@ -74,11 +78,11 @@ wss.on('connection', (ws, req) => {
 
         case 'subscribe':
           const gameId = message.gameId
-          const fid = message.fid  // Extract Farcaster ID from message
+          let fid = message.fid  // Extract Farcaster ID from message
           currentGameId = gameId
 
-          // 🛡️ Require Farcaster authentication
-          if (!fid || typeof fid !== 'number') {
+          // 🛡️ Check Farcaster authentication requirement
+          if (REQUIRE_FARCASTER_AUTH && (!fid || typeof fid !== 'number')) {
             ws.send(JSON.stringify({
               type: 'error',
               code: 'FID_REQUIRED',
@@ -86,6 +90,14 @@ wss.on('connection', (ws, req) => {
             }))
             console.log(`🚫 Rejected subscription without FID from ${playerAddress}`)
             break
+          }
+
+          // 🧪 For localhost development: generate dummy FID from wallet address
+          if (!REQUIRE_FARCASTER_AUTH && (!fid || typeof fid !== 'number')) {
+            // Convert wallet address to a consistent numeric FID
+            const addressNum = parseInt(playerAddress?.slice(2, 10) || '0', 16)
+            fid = 1000000 + (addressNum % 1000000) // FIDs 1000000-1999999 reserved for localhost
+            console.log(`🧪 Generated localhost FID ${fid} for ${playerAddress}`)
           }
 
           let room = gameRooms.get(gameId)

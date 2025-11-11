@@ -65,27 +65,60 @@ export class PokerContract {
   }
 
   async createTable(smallBlind: bigint, bigBlind: bigint): Promise<string> {
+    console.log('🔵 Starting createTable transaction...')
     const contractWithSigner = this.contract.connect(this.signer)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const tx = await (contractWithSigner as any).createTable(smallBlind, bigBlind)
-    const receipt = await tx.wait()
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const event = receipt.logs.find((log: any) => {
-      try {
-        const parsed = this.contract.interface.parseLog(log)
-        return parsed?.name === 'TableCreated'
-      } catch {
-        return false
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      console.log('🔵 Sending transaction to contract...')
+      const tx = await (contractWithSigner as any).createTable(smallBlind, bigBlind)
+      console.log('🔵 Transaction sent! Hash:', tx.hash)
+      console.log('🔵 Waiting for confirmation...')
+
+      // Add timeout for transaction wait (60 seconds)
+      const receipt = await Promise.race([
+        tx.wait(),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Transaction confirmation timeout after 60s')), 60000)
+        )
+      ])
+
+      console.log('✅ Transaction confirmed!')
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const event = receipt.logs.find((log: any) => {
+        try {
+          const parsed = this.contract.interface.parseLog(log)
+          return parsed?.name === 'TableCreated'
+        } catch {
+          return false
+        }
+      })
+
+      if (event) {
+        const parsed = this.contract.interface.parseLog(event)
+        const tableId = parsed?.args.tableId.toString()
+        console.log('✅ Table created with ID:', tableId)
+        return tableId
       }
-    })
 
-    if (event) {
-      const parsed = this.contract.interface.parseLog(event)
-      return parsed?.args.tableId.toString()
+      throw new Error('Failed to get table ID from transaction')
+    } catch (error) {
+      console.error('❌ createTable error:', error)
+      // Provide more helpful error messages
+      if (error instanceof Error) {
+        if (error.message.includes('user rejected')) {
+          throw new Error('Transaction was rejected')
+        }
+        if (error.message.includes('insufficient funds')) {
+          throw new Error('Insufficient funds for transaction')
+        }
+        if (error.message.includes('timeout')) {
+          throw new Error('Transaction is taking too long. Check your wallet for status.')
+        }
+      }
+      throw error
     }
-
-    throw new Error('Failed to get table ID from transaction')
   }
 
   async joinTable(tableId: string, buyIn: bigint): Promise<void> {

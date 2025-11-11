@@ -2,7 +2,7 @@ import { ethers } from 'ethers'
 
 // Contract ABI - essential functions and events
 const POKER_CONTRACT_ABI = [
-  "function getTableInfo(uint256 tableId) view returns (uint256 smallBlind, uint256 bigBlind, uint256 minBuyIn, uint8 numPlayers, uint256 pot, bool isActive, uint256 handNumber)",
+  "function getTableInfo(uint256 tableId) view returns (uint256 smallBlind, uint256 bigBlind, uint256 minBuyIn, uint8 numPlayers, uint256 pot, bool isActive, uint256 handNumber, uint256 creationTime)",
   "function getPlayerInfo(uint256 tableId, address player) view returns (uint256 chips, bool isSeated)",
   "function getPlayers(uint256 tableId) view returns (address[9])",
   "function startNewHand(uint256 tableId)",
@@ -20,6 +20,10 @@ const POKER_CONTRACT_ABI = [
   "function getCardCommitment(uint256 tableId, address player) view returns (bytes32 cardHash, bool committed, bool revealed, uint256 commitTime, string card1, string card2)",
   "function isRevealWithinTimeout(uint256 tableId, address player) view returns (bool)",
 
+  // Lobby timeout functions
+  "function hasLobbyTimedOut(uint256 tableId) view returns (bool)",
+  "function cancelTimedOutLobby(uint256 tableId)",
+
   "event TableCreated(uint256 indexed tableId, uint256 smallBlind, uint256 bigBlind, uint256 minBuyIn)",
   "event PlayerJoined(uint256 indexed tableId, address indexed player, uint256 buyIn, uint8 seatIndex)",
   "event PlayerLeft(uint256 indexed tableId, address indexed player, uint256 cashOut)",
@@ -29,6 +33,8 @@ const POKER_CONTRACT_ABI = [
   "event CardRevealed(uint256 indexed tableId, address indexed player, string card1, string card2)",
   "event RandomSeedRequested(uint256 indexed tableId, uint256 indexed requestId)",
   "event RandomSeedFulfilled(uint256 indexed tableId, uint256 randomSeed)",
+  "event LobbyTimedOut(uint256 indexed tableId, uint256 refundedPlayers, uint256 totalRefunded)",
+  "event PlayerRefunded(uint256 indexed tableId, address indexed player, uint256 amount)",
 ]
 
 export interface TableInfo {
@@ -39,6 +45,7 @@ export interface TableInfo {
   pot: bigint
   isActive: boolean
   handNumber: bigint
+  creationTime: bigint
 }
 
 export interface PlayerInfo {
@@ -75,6 +82,7 @@ export class ContractService {
       pot: result.pot,
       isActive: result.isActive,
       handNumber: result.handNumber,
+      creationTime: result.creationTime,
     }
   }
 

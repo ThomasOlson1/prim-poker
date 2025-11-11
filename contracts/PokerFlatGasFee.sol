@@ -48,6 +48,9 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus, ReentrancyGuard {
     // SECURITY: Reveal timeout - players must reveal within this time or forfeit
     uint256 public constant REVEAL_TIMEOUT = 5 minutes;
 
+    // LOBBY TIMEOUT: Lobbies waiting for players must start within 2 hours or be cancelled
+    uint256 public constant LOBBY_TIMEOUT = 2 hours;
+
     struct Table {
         uint256 tableId;
         uint256 smallBlind;
@@ -64,6 +67,7 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus, ReentrancyGuard {
         uint256 handNumber;
         uint256 randomSeed;        // VRF random seed for this hand (0 if not received yet)
         uint256 vrfRequestId;      // Chainlink VRF request ID for pending requests
+        uint256 creationTime;      // Timestamp when table was created (for lobby timeout)
     }
 
     mapping(uint256 => Table) public tables;
@@ -100,6 +104,7 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus, ReentrancyGuard {
     event RandomSeedFulfilled(uint256 indexed tableId, uint256 randomSeed);
     event EmergencyShutdown(address indexed triggeredBy, uint256 totalRefunded);
     event PlayerRefunded(uint256 indexed tableId, address indexed player, uint256 amount);
+    event LobbyTimedOut(uint256 indexed tableId, uint256 refundedPlayers, uint256 totalRefunded);
 
     constructor(address vrfCoordinator) VRFConsumerBaseV2Plus(vrfCoordinator) {
         // Owner is set by VRFConsumerBaseV2Plus parent contract
@@ -319,6 +324,7 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus, ReentrancyGuard {
         table.minBuyIn = bigBlind * 50; // 50 BB minimum
         table.isActive = true;
         table.handNumber = 0;
+        table.creationTime = block.timestamp; // Track creation time for lobby timeout
 
         emit TableCreated(tableId, smallBlind, bigBlind, table.minBuyIn);
 
@@ -575,6 +581,33 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus, ReentrancyGuard {
     }
 
     /**
+     * @dev Check if a lobby has timed out and can be cancelled
+     * @param tableId Table ID
+     * @return bool True if lobby has timed out
+     */
+    function hasLobbyTimedOut(uint256 tableId) public view returns (bool) {
+        if (tableId == 0 || tableId > tableCounter) {
+            return false; // Table doesn't exist
+        }
+
+        Table storage table = tables[tableId];
+
+        if (!table.isActive) {
+            return false; // Table not active
+        }
+
+        if (table.handNumber > 0) {
+            return false; // Game has already started
+        }
+
+        if (table.pot > 0) {
+            return false; // Hand in progress
+        }
+
+        return block.timestamp >= table.creationTime + LOBBY_TIMEOUT;
+    }
+
+    /**
      * @dev Find next active player position
      */
     function findPlayerPosition(uint256 tableId, uint256 offset)
@@ -640,7 +673,8 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus, ReentrancyGuard {
             uint8 numPlayers,
             uint256 pot,
             bool isActive,
-            uint256 handNumber
+            uint256 handNumber,
+            uint256 creationTime
         )
     {
         Table storage table = tables[tableId];
@@ -651,7 +685,8 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus, ReentrancyGuard {
             table.numPlayers,
             table.pot,
             table.isActive,
-            table.handNumber
+            table.handNumber,
+            table.creationTime
         );
     }
 
@@ -729,6 +764,56 @@ contract PokerFlatGasFee is VRFConsumerBaseV2Plus, ReentrancyGuard {
         address oldServer = gameServer;
         gameServer = _gameServer;
         emit GameServerUpdated(oldServer, _gameServer);
+    }
+
+    /**
+     * @dev Cancel a lobby that has timed out waiting for players to start
+     * Anyone can call this to free up stuck funds after 2 hours
+     * @param tableId Table ID to cancel
+     */
+    function cancelTimedOutLobby(uint256 tableId) external nonReentrant {
+        require(tableId > 0 && tableId <= tableCounter, "Table does not exist");
+        Table storage table = tables[tableId];
+
+        require(table.isActive, "Table not active");
+        require(table.handNumber == 0, "Game has already started");
+        require(table.pot == 0, "Cannot cancel during active hand");
+        require(
+            block.timestamp >= table.creationTime + LOBBY_TIMEOUT,
+            "Lobby timeout not reached yet"
+        );
+
+        uint256 totalRefunded = 0;
+        uint256 refundedPlayers = 0;
+
+        // Refund all players at this table
+        for (uint8 i = 0; i < 9; i++) {
+            address player = table.players[i];
+            if (player != address(0)) {
+                uint256 chipCount = table.chips[player];
+
+                if (chipCount > 0) {
+                    table.chips[player] = 0;
+                    table.isSeated[player] = false;
+                    totalRefunded += chipCount;
+                    refundedPlayers++;
+
+                    (bool success, ) = payable(player).call{value: chipCount}("");
+                    require(success, "Refund transfer failed");
+
+                    emit PlayerRefunded(tableId, player, chipCount);
+                }
+
+                // Clear the seat
+                table.players[i] = address(0);
+            }
+        }
+
+        // Deactivate the table
+        table.isActive = false;
+        table.numPlayers = 0;
+
+        emit LobbyTimedOut(tableId, refundedPlayers, totalRefunded);
     }
 
     /**

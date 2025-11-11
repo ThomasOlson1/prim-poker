@@ -25,10 +25,11 @@ export function CreateGameModal({ onClose, onCreate, loading }: CreateGameModalP
   const [maxPlayers, setMaxPlayers] = useState(6)
   const { ethPrice } = useEthPrice()
 
-  // Convert dollar amount to ETH
+  // Convert dollar amount to ETH with proper rounding to avoid precision issues
   const dollarToEth = (dollars: number): number => {
     if (!ethPrice) return dollars / 3000 // Fallback if price not loaded (~$3000 per ETH)
-    return dollars / ethPrice
+    // Round to 8 decimal places to avoid floating point precision errors
+    return Math.round((dollars / ethPrice) * 1e8) / 1e8
   }
 
   // Format ETH amount for display

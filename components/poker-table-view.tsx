@@ -33,10 +33,11 @@ export function PokerTableView({
   // Get ETH price for conversion
   const { ethPrice } = useEthPrice()
 
-  // Convert ETH to dollars
+  // Convert ETH to dollars with proper rounding to avoid precision issues
   const ethToDollars = (eth: number): number => {
     if (!ethPrice) return eth * 3000 // Fallback
-    return eth * ethPrice
+    // Round to 2 decimal places (cents) to avoid floating point precision errors
+    return Math.round(eth * ethPrice * 100) / 100
   }
 
   // WebSocket connection for real-time game state

@@ -84,15 +84,16 @@ export function PokerGameApp() {
       // Parse blinds (e.g., "0.5/1" -> smallBlind: $0.5, bigBlind: $1)
       const [smallBlindUsd, bigBlindUsd] = gameData.blindLevel.split("/").map(s => parseFloat(s.trim()))
 
-      // Convert USD to ETH
-      const smallBlindEth = smallBlindUsd / ethPrice
-      const bigBlindEth = bigBlindUsd / ethPrice
-      const buyInEth = gameData.buyInDollars / ethPrice
+      // Convert USD to ETH with proper rounding to avoid precision issues
+      // Round to 8 decimal places before converting to wei
+      const smallBlindEth = Math.round((smallBlindUsd / ethPrice) * 1e8) / 1e8
+      const bigBlindEth = Math.round((bigBlindUsd / ethPrice) * 1e8) / 1e8
+      const buyInEth = Math.round((gameData.buyInDollars / ethPrice) * 1e8) / 1e8
 
       // Convert to Wei (smallest ETH unit)
-      // Use toFixed(18) to limit decimals to ETH's max precision
-      const smallBlind = ethers.parseEther(smallBlindEth.toFixed(18))
-      const bigBlind = ethers.parseEther(bigBlindEth.toFixed(18))
+      // Use toFixed(8) to maintain precision without floating point errors
+      const smallBlind = ethers.parseEther(smallBlindEth.toFixed(8))
+      const bigBlind = ethers.parseEther(bigBlindEth.toFixed(8))
 
       console.log("🎲 Creating table on contract...")
       console.log(`   Blinds: $${smallBlindUsd}/$${bigBlindUsd} (${smallBlindEth.toFixed(6)}/${bigBlindEth.toFixed(6)} ETH)`)

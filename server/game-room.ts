@@ -7,7 +7,7 @@ import { PokerEngine, Card, CardCommitment } from './poker-engine'
 
 export interface Player {
   address: string
-  fid: number  // Farcaster ID for multi-account prevention
+  fid?: number  // Optional Farcaster ID for multi-account prevention
   ws: WebSocket
   stack: number
   bet: number
@@ -72,9 +72,9 @@ export class GameRoom {
     }
   }
 
-  async addPlayer(address: string, fid: number, ws: WebSocket) {
-    // 🛡️ ANTI-SYBIL: Check if this Farcaster ID is already playing at this table
-    if (this.activeFids.has(fid)) {
+  async addPlayer(address: string, fid: number | undefined, ws: WebSocket) {
+    // 🛡️ ANTI-SYBIL: Check if this Farcaster ID is already playing at this table (only if FID provided)
+    if (fid !== undefined && this.activeFids.has(fid)) {
       const error = {
         type: 'error',
         code: 'DUPLICATE_FID',
@@ -102,7 +102,7 @@ export class GameRoom {
 
       const player: Player = {
         address,
-        fid,  // Store Farcaster ID
+        fid,  // Store Farcaster ID (optional)
         ws,
         stack,
         bet: 0,
@@ -111,9 +111,11 @@ export class GameRoom {
       }
 
       this.players.set(address, player)
-      this.activeFids.add(fid)  // Track this FID as active in the game
+      if (fid !== undefined) {
+        this.activeFids.add(fid)  // Track this FID as active in the game (only if provided)
+      }
 
-      console.log(`✅ Player ${address} (FID: ${fid}) joined table ${this.gameId}`)
+      console.log(`✅ Player ${address}${fid !== undefined ? ` (FID: ${fid})` : ''} joined table ${this.gameId}`)
 
       this.updateGameState()
       this.broadcast({
@@ -136,9 +138,11 @@ export class GameRoom {
   removePlayer(address: string) {
     const player = this.players.get(address)
     if (player) {
-      // Remove FID from active tracking
-      this.activeFids.delete(player.fid)
-      console.log(`👋 Player ${address} (FID: ${player.fid}) left table ${this.gameId}`)
+      // Remove FID from active tracking (only if FID was provided)
+      if (player.fid !== undefined) {
+        this.activeFids.delete(player.fid)
+      }
+      console.log(`👋 Player ${address}${player.fid !== undefined ? ` (FID: ${player.fid})` : ''} left table ${this.gameId}`)
 
       this.players.delete(address)
       this.updateGameState()

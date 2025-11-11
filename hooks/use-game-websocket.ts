@@ -9,7 +9,7 @@ export interface GameStateFromServer {
   gameId: string
   players: Record<string, {
     address: string
-    fid: number  // Farcaster ID for multi-account prevention
+    fid?: number  // Optional Farcaster ID for multi-account prevention
     stack: number
     bet: number
     folded: boolean

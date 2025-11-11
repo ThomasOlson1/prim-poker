@@ -99,7 +99,7 @@ export function PokerGameApp() {
         setSelectedGameId(tableId)
         setCurrentScreen("game")
       } else {
-        throw new Error("Failed to create table")
+        throw new Error("Failed to create table - check console for details")
       }
     } catch (error) {
       console.error("Failed to create table:", error)

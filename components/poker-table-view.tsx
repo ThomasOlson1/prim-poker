@@ -300,86 +300,118 @@ export function PokerTableView({
         </div>
       </div>
 
-      {/* Main Content - Mobile Optimized */}
+      {/* Main Content - Circular Table Layout */}
       <div className="flex-1 flex flex-col items-center justify-center px-3 py-4 pb-40 md:pb-8">
-        {/* Poker Table - Responsive */}
-        <div className="w-full max-w-sm mx-auto">
-          {/* Community Cards */}
-          <div className="mb-4">
-            <div className="text-xs text-gray-400 text-center mb-2">Community Cards</div>
-            <div className="flex justify-center gap-1">
-              {communityCards.map((card, idx) => (
-                <div
-                  key={idx}
-                  className="w-10 h-14 bg-white rounded border border-gray-800 flex items-center justify-center text-xs font-bold text-black"
-                >
-                  {renderCard(card)}
+        {/* Poker Table - Oval/Circular Layout */}
+        <div className="w-full max-w-4xl mx-auto relative" style={{ minHeight: '500px' }}>
+          {/* Poker Table Felt */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-full max-w-2xl aspect-[16/10] bg-gradient-to-br from-green-800 to-green-900 rounded-[50%] border-8 border-amber-900/50 shadow-2xl flex items-center justify-center">
+              {/* Center Area - Community Cards and Pot */}
+              <div className="text-center">
+                {/* Community Cards */}
+                <div className="mb-4">
+                  <div className="text-xs text-white/70 text-center mb-2">Community Cards</div>
+                  <div className="flex justify-center gap-1">
+                    {communityCards.map((card, idx) => (
+                      <div
+                        key={idx}
+                        className="w-10 h-14 bg-white rounded border border-gray-800 flex items-center justify-center text-xs font-bold text-black shadow-lg"
+                      >
+                        {renderCard(card)}
+                      </div>
+                    ))}
+                    <div className="w-10 h-14 bg-gradient-to-br from-gray-400 to-gray-600 rounded border border-gray-800 flex items-center justify-center text-sm font-bold text-gray-800 shadow-lg">
+                      ?
+                    </div>
+                  </div>
                 </div>
-              ))}
-              <div className="w-10 h-14 bg-gradient-to-br from-gray-400 to-gray-600 rounded border border-gray-800 flex items-center justify-center text-sm font-bold text-gray-800">
-                ?
+
+                {/* Pot Display */}
+                <div className="bg-black/30 backdrop-blur-sm rounded-lg p-3 text-center border border-white/20">
+                  <div className="text-xs text-white/80 mb-1">Pot</div>
+                  <div className="text-2xl font-bold text-amber-300">${ethToDollars(pot).toFixed(2)}</div>
+                  <div className="text-xs text-purple-300 mt-1">≈ {pot.toFixed(6)} ETH</div>
+                </div>
+
+                {/* Game Status */}
+                <div className="text-center mt-3">
+                  {tableInfo && (
+                    <div className="text-xs text-white/70 mb-1">
+                      ${ethToDollars(Number(ethers.formatEther(tableInfo.smallBlind))).toFixed(2)}/${ethToDollars(Number(ethers.formatEther(tableInfo.bigBlind))).toFixed(2)} Blinds
+                    </div>
+                  )}
+                  <div className="text-sm font-semibold text-white bg-purple-600/50 px-3 py-1 rounded-full inline-block">{stage.toUpperCase()}</div>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Pot Display */}
-          <div className="bg-green-900/50 rounded-lg p-3 mb-4 text-center border border-green-700/30">
-            <div className="text-xs text-gray-300 mb-1">Current Pot</div>
-            <div className="text-2xl font-bold text-amber-400">${ethToDollars(pot).toFixed(2)}</div>
-            <div className="text-xs text-purple-400 mt-1">≈ {pot.toFixed(6)} ETH</div>
-          </div>
+          {/* Players positioned around the table */}
+          <div className="absolute inset-0 pointer-events-none">
+            {players.map((player, idx) => {
+              // Calculate position around ellipse
+              const totalPlayers = players.length
+              // Start from top (270 degrees) and go clockwise
+              const angleOffset = -90 // Start from top
+              const angleStep = 360 / totalPlayers
+              const angle = (angleOffset + (idx * angleStep)) * (Math.PI / 180)
 
-          <div className={`grid gap-2 mb-4 ${
-            players.length <= 2 ? 'grid-cols-2' :
-            players.length <= 4 ? 'grid-cols-2' :
-            players.length <= 6 ? 'grid-cols-3' :
-            'grid-cols-3'
-          }`}>
-            {players.map((player, idx) => (
-              <div key={player.address} className="relative bg-slate-800/50 border border-purple-500/20 rounded-lg p-2">
-                {/* Position Badge */}
-                {renderPositionBadge(idx)}
+              // Ellipse parameters (responsive)
+              const radiusX = 45 // Percentage of container width
+              const radiusY = 42 // Percentage of container height
 
-                <div className="flex items-center gap-1">
-                  <div
-                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs border flex-shrink-0 ${
-                      wsGameState?.currentPlayer === player.address
-                        ? "border-yellow-400 bg-yellow-400/10 ring-2 ring-yellow-400/50"
-                        : player.folded
-                          ? "border-gray-600 bg-gray-600/10 opacity-50"
-                          : "border-purple-400 bg-purple-400/10"
-                    }`}
-                  >
-                    {player.address.slice(2, 4).toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-semibold text-white truncate">
-                      {player.address === address ? 'You' : `${player.address.slice(0, 6)}...${player.address.slice(-4)}`}
+              // Calculate position
+              const x = 50 + radiusX * Math.cos(angle) // 50% = center
+              const y = 50 + radiusY * Math.sin(angle)
+
+              return (
+                <div
+                  key={player.address}
+                  className="absolute pointer-events-auto"
+                  style={{
+                    left: `${x}%`,
+                    top: `${y}%`,
+                    transform: 'translate(-50%, -50%)',
+                  }}
+                >
+                  <div className="relative bg-slate-800/95 backdrop-blur-sm border-2 border-purple-500/30 rounded-lg p-2 shadow-xl min-w-[120px]">
+                    {/* Position Badge */}
+                    {renderPositionBadge(idx)}
+
+                    <div className="flex items-center gap-1">
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center text-xs border-2 flex-shrink-0 ${
+                          wsGameState?.currentPlayer === player.address
+                            ? "border-yellow-400 bg-yellow-400/20 ring-2 ring-yellow-400/50 shadow-lg shadow-yellow-400/50"
+                            : player.folded
+                              ? "border-gray-600 bg-gray-600/10 opacity-50"
+                              : "border-purple-400 bg-purple-400/10"
+                        }`}
+                      >
+                        {player.address.slice(2, 4).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-semibold text-white truncate">
+                          {player.address === address ? '⭐ You' : `${player.address.slice(0, 6)}...${player.address.slice(-4)}`}
+                        </div>
+                        <div className="text-xs text-amber-400 font-bold">${ethToDollars(player.stack).toFixed(2)}</div>
+                      </div>
                     </div>
-                    <div className="text-xs text-amber-400">${ethToDollars(player.stack).toFixed(2)}</div>
+                    {player.bet > 0 && (
+                      <div className="text-xs text-red-400 font-bold mt-1 bg-red-500/10 px-2 py-0.5 rounded">
+                        Bet: ${ethToDollars(player.bet).toFixed(2)}
+                      </div>
+                    )}
+                    {player.folded && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-lg backdrop-blur-sm">
+                        <span className="text-xs font-bold text-gray-300">FOLDED</span>
+                      </div>
+                    )}
                   </div>
                 </div>
-                {player.bet > 0 && <div className="text-xs text-red-400 font-bold mt-1">Bet: ${ethToDollars(player.bet).toFixed(2)}</div>}
-                {player.address === address && (
-                  <div className="text-xs text-blue-400 mt-1">Your seat</div>
-                )}
-                {player.folded && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-lg">
-                    <span className="text-xs font-bold text-gray-400">FOLDED</span>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* Game Status */}
-          <div className="text-center mb-4">
-            {tableInfo && (
-              <div className="text-xs text-gray-400 mb-1">
-                ${ethToDollars(Number(ethers.formatEther(tableInfo.smallBlind))).toFixed(2)}/${ethToDollars(Number(ethers.formatEther(tableInfo.bigBlind))).toFixed(2)} Blinds
-              </div>
-            )}
-            <div className="text-sm font-semibold text-purple-400">{stage.toUpperCase()}</div>
+              )
+            })}
           </div>
         </div>
       </div>

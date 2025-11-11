@@ -76,8 +76,9 @@ export function PokerGameApp() {
       const buyInEth = gameData.buyInDollars / ethPrice
 
       // Convert to Wei (smallest ETH unit)
-      const smallBlind = ethers.parseEther(smallBlindEth.toString())
-      const bigBlind = ethers.parseEther(bigBlindEth.toString())
+      // Use toFixed(18) to limit decimals to ETH's max precision
+      const smallBlind = ethers.parseEther(smallBlindEth.toFixed(18))
+      const bigBlind = ethers.parseEther(bigBlindEth.toFixed(18))
 
       console.log("🎲 Creating table on contract...")
       console.log(`   Blinds: $${smallBlindUsd}/$${bigBlindUsd} (${smallBlindEth.toFixed(6)}/${bigBlindEth.toFixed(6)} ETH)`)

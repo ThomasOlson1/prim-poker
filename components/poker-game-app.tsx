@@ -35,6 +35,26 @@ export function PokerGameApp() {
       // Check if contract address is configured
       const contractAddress = process.env.NEXT_PUBLIC_POKER_CONTRACT_ADDRESS
       if (!contractAddress) {
+        toast({
+          title: "⚠️ Setup Required",
+          description: "Contract not deployed. Please check the console or QUICKSTART guide for setup instructions.",
+          variant: "destructive",
+          duration: 8000,
+        })
+        console.error("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        console.error("❌ CONTRACT NOT CONFIGURED")
+        console.error("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        console.error("")
+        console.error("To fix this, you need to:")
+        console.error("1. Deploy the contract (see QUICKSTART_TESTNET.md)")
+        console.error("2. Create .env.local file with:")
+        console.error("   NEXT_PUBLIC_POKER_CONTRACT_ADDRESS=<your_contract_address>")
+        console.error("")
+        console.error("Quick setup:")
+        console.error("  npm run deploy:base-sepolia")
+        console.error("")
+        console.error("Then copy the contract address to .env.local")
+        console.error("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
         throw new Error(
           "Contract address not configured. Please set NEXT_PUBLIC_POKER_CONTRACT_ADDRESS in .env.local"
         )

@@ -5,7 +5,7 @@ import { PokerTableView } from "./poker-table-view"
 import { GameLobby } from "./game-lobby"
 import { MyGamesScreen } from "./my-games-screen"
 import { CreateGameModal } from "./create-game-modal"
-import { useCreateTable, useEthPrice } from "@/hooks/use-poker-contract"
+import { useCreateTable, useEthPrice, useAllTables } from "@/hooks/use-poker-contract"
 import { useToast } from "@/hooks/use-toast"
 import { useAccount } from "wagmi"
 import { ethers } from "ethers"
@@ -18,6 +18,7 @@ export function PokerGameApp() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const { createTable, loading: creatingTable } = useCreateTable()
   const { ethPrice } = useEthPrice()
+  const { games } = useAllTables()
   const { toast } = useToast()
   const { address } = useAccount()
 
@@ -139,6 +140,7 @@ export function PokerGameApp() {
         <MyGamesScreen games={[]} onPlayGame={handlePlayGame} onNavigateHome={() => setCurrentScreen("home")} />
       ) : (
         <GameLobby
+          games={games}
           onPlayGame={handlePlayGame}
           onNavigateToMyGames={() => setCurrentScreen("myGames")}
           onCreateGame={() => setShowCreateModal(true)}

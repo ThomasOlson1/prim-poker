@@ -248,6 +248,25 @@ export class PokerContract {
     return await (this.contract as any).tableCounter()
   }
 
+  async getAllActiveTables(): Promise<Array<{ tableId: number; tableInfo: TableInfo }>> {
+    const counter = await this.getTableCounter()
+    const tables: Array<{ tableId: number; tableInfo: TableInfo }> = []
+
+    // Fetch all tables from 1 to counter
+    for (let i = 1; i <= Number(counter); i++) {
+      try {
+        const tableInfo = await this.getTableInfo(i.toString())
+        if (tableInfo.isActive) {
+          tables.push({ tableId: i, tableInfo })
+        }
+      } catch (error) {
+        console.log(`Could not fetch table ${i}:`, error)
+      }
+    }
+
+    return tables
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   on(eventName: string, callback: (...args: any[]) => void) {
     this.contract.on(eventName, callback)

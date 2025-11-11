@@ -261,3 +261,60 @@ export function useEthPrice() {
 
   return { ethPrice, loading, error }
 }
+
+export function useAllTables() {
+  const { contract, isInitialized } = usePokerContract()
+  const { ethPrice } = useEthPrice()
+  const [tables, setTables] = useState<Array<{ tableId: number; tableInfo: TableInfo }>>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!contract || !isInitialized) {
+      return
+    }
+
+    const fetchTables = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const activeTables = await contract.getAllActiveTables()
+        setTables(activeTables)
+      } catch (err) {
+        console.error('Failed to fetch tables:', err)
+        setError(err instanceof Error ? err.message : 'Failed to fetch tables')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchTables()
+
+    // Refresh every 10 seconds
+    const interval = setInterval(fetchTables, 10000)
+    return () => clearInterval(interval)
+  }, [contract, isInitialized])
+
+  // Convert to game lobby format
+  const games = tables.map((table) => {
+    const smallBlindEth = Number(ethers.formatEther(table.tableInfo.smallBlind))
+    const bigBlindEth = Number(ethers.formatEther(table.tableInfo.bigBlind))
+    const buyInEth = Number(ethers.formatEther(table.tableInfo.minBuyIn))
+
+    const smallBlindUsd = ethPrice ? smallBlindEth * ethPrice : smallBlindEth * 3000
+    const bigBlindUsd = ethPrice ? bigBlindEth * ethPrice : bigBlindEth * 3000
+    const buyInUsd = ethPrice ? buyInEth * ethPrice : buyInEth * 3000
+
+    return {
+      id: table.tableId.toString(),
+      name: `Table #${table.tableId}`,
+      buyIn: Math.round(buyInUsd),
+      blinds: `${smallBlindUsd.toFixed(2)}/${bigBlindUsd.toFixed(2)}`,
+      players: table.tableInfo.numPlayers,
+      maxPlayers: 9,
+      avgPot: 0, // TODO: Calculate from table history
+    }
+  })
+
+  return { games, loading, error }
+}

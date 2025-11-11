@@ -74,7 +74,13 @@ wss.on('connection', (ws, req) => {
 
         case 'subscribe':
           const gameId = message.gameId
+          const fid = message.fid  // Extract optional Farcaster ID from message
           currentGameId = gameId
+
+          // 🛡️ OPTIONAL Farcaster authentication - warn if not provided but allow connection
+          if (!fid || typeof fid !== 'number') {
+            console.log(`⚠️  Player ${playerAddress} subscribing without FID (multi-account prevention disabled)`)
+          }
 
           let room = gameRooms.get(gameId)
           if (!room) {
@@ -84,8 +90,8 @@ wss.on('connection', (ws, req) => {
 
           if (playerAddress) {
             try {
-              await room.addPlayer(playerAddress, ws)
-              console.log(`✅ Player ${playerAddress} subscribed to game ${gameId}`)
+              await room.addPlayer(playerAddress, fid, ws)
+              console.log(`✅ Player ${playerAddress}${fid ? ` (FID: ${fid})` : ''} subscribed to game ${gameId}`)
             } catch (error) {
               console.log(`🚫 Failed to add player: ${error}`)
               // Error message already sent by addPlayer

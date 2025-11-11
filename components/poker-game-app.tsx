@@ -7,6 +7,7 @@ import { MyGamesScreen } from "./my-games-screen"
 import { CreateGameModal } from "./create-game-modal"
 import { useCreateTable, useEthPrice } from "@/hooks/use-poker-contract"
 import { useToast } from "@/hooks/use-toast"
+import { useAccount } from "wagmi"
 import { ethers } from "ethers"
 
 type Screen = "home" | "game" | "myGames"
@@ -18,6 +19,9 @@ export function PokerGameApp() {
   const { createTable, loading: creatingTable } = useCreateTable()
   const { ethPrice } = useEthPrice()
   const { toast } = useToast()
+  const { address } = useAccount()
+
+  console.log('🎮 PokerGameApp: Wallet address:', address || 'Not connected')
 
   const handlePlayGame = (gameId: string) => {
     setSelectedGameId(gameId)
@@ -32,6 +36,16 @@ export function PokerGameApp() {
     maxPlayers: number
   }) => {
     try {
+      // Check if wallet is connected
+      if (!address) {
+        toast({
+          title: "Wallet Not Connected",
+          description: "Please connect your wallet first",
+          variant: "destructive",
+        })
+        throw new Error("Wallet not connected")
+      }
+
       // Check if contract address is configured
       const contractAddress = process.env.NEXT_PUBLIC_POKER_CONTRACT_ADDRESS
       console.log("🔍 DEBUG: Contract address from env:", contractAddress)
@@ -99,7 +113,7 @@ export function PokerGameApp() {
         setSelectedGameId(tableId)
         setCurrentScreen("game")
       } else {
-        throw new Error("Failed to create table")
+        throw new Error("Failed to create table - check console for details")
       }
     } catch (error) {
       console.error("Failed to create table:", error)

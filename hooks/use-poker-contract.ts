@@ -12,7 +12,11 @@ export function usePokerContract() {
   const [isInitialized, setIsInitialized] = useState(false)
 
   useEffect(() => {
+    console.log('🔧 usePokerContract: walletClient:', walletClient ? 'Connected' : 'Not connected')
+    console.log('🔧 usePokerContract: address:', address)
+
     if (!walletClient) {
+      console.log('⚠️ No wallet client - contract not initialized')
       setContract(null)
       setIsInitialized(false)
       return
@@ -20,22 +24,24 @@ export function usePokerContract() {
 
     const initContract = async () => {
       try {
+        console.log('🔧 Initializing contract...')
         // Convert wagmi WalletClient to ethers provider and signer
         const provider = new ethers.BrowserProvider(walletClient as any)
         const signer = await provider.getSigner()
 
         const pokerContract = new PokerContract(provider, signer)
+        console.log('✅ Contract initialized successfully')
         setContract(pokerContract)
         setIsInitialized(true)
       } catch (error) {
-        console.error('Failed to initialize contract:', error)
+        console.error('❌ Failed to initialize contract:', error)
         setContract(null)
         setIsInitialized(false)
       }
     }
 
     initContract()
-  }, [walletClient])
+  }, [walletClient, address])
 
   return {
     contract,
@@ -121,6 +127,7 @@ export function useCreateTable() {
 
   const createTable = async (smallBlind: bigint, bigBlind: bigint): Promise<string | null> => {
     if (!contract) {
+      console.error('❌ Contract not initialized')
       setError('Contract not initialized')
       return null
     }
@@ -129,10 +136,20 @@ export function useCreateTable() {
     setError(null)
 
     try {
+      console.log('📝 Calling contract.createTable with:', { smallBlind: smallBlind.toString(), bigBlind: bigBlind.toString() })
       const tableId = await contract.createTable(smallBlind, bigBlind)
+      console.log('✅ Table created successfully, ID:', tableId)
       return tableId
     } catch (err) {
-      console.error('Failed to create table:', err)
+      console.error('❌ Failed to create table - Full error:', err)
+      console.error('❌ Error type:', err?.constructor?.name)
+      console.error('❌ Error message:', err instanceof Error ? err.message : String(err))
+      if (err && typeof err === 'object' && 'code' in err) {
+        console.error('❌ Error code:', (err as any).code)
+      }
+      if (err && typeof err === 'object' && 'reason' in err) {
+        console.error('❌ Error reason:', (err as any).reason)
+      }
       setError(err instanceof Error ? err.message : 'Failed to create table')
       return null
     } finally {

@@ -3,7 +3,7 @@ import { TurnTimer } from './turn-timer'
 import { v4 as uuidv4 } from 'uuid'
 import { ContractService } from './contract-service'
 import { ethers } from 'ethers'
-import { PokerEngine, Card, CardCommitment } from '../lib/poker-engine'
+import { PokerEngine, Card, CardCommitment } from './poker-engine'
 
 export interface Player {
   address: string

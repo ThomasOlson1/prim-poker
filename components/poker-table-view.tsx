@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { useTurnNotifications } from "@/hooks/use-turn-notifications"
 import { useGameWebSocket } from "@/hooks/use-game-websocket"
-import { useTableInfo, usePlayerInfo, useJoinTable, useEthPrice } from "@/hooks/use-poker-contract"
+import { useTableInfo, usePlayerInfo, useJoinTable, useEthPrice, useCurrentGasFee } from "@/hooks/use-poker-contract"
 import { useAccount } from "wagmi"
 import { useToast } from "@/hooks/use-toast"
 import { ethers } from "ethers"
@@ -32,6 +32,9 @@ export function PokerTableView({
 
   // Get ETH price for conversion
   const { ethPrice } = useEthPrice()
+
+  // Get current gas fee
+  const { gasFee } = useCurrentGasFee()
 
   // Convert ETH to dollars with proper rounding to avoid precision issues
   const ethToDollars = (eth: number): number => {
@@ -124,6 +127,17 @@ export function PokerTableView({
               <div>Buy-in: ${buyInUsd.toFixed(2)}</div>
               <div className="text-xs text-purple-400">≈ {buyInEth.toFixed(6)} ETH</div>
             </div>
+            {gasFee && ethPrice && (
+              <div className="bg-amber-900/20 border border-amber-500/30 rounded p-2 mt-3">
+                <div className="text-xs text-amber-300 font-semibold mb-1">💰 Fee per Hand</div>
+                <div className="text-xs text-gray-300">
+                  Platform Fee: ${ethToDollars(Number(ethers.formatEther(gasFee))).toFixed(2)}
+                </div>
+                <div className="text-xs text-gray-400 mt-1">
+                  Deducted from blinds each hand
+                </div>
+              </div>
+            )}
           </div>
           <div className="flex gap-2">
             <Button onClick={onExit} variant="outline" className="flex-1">
@@ -338,8 +352,15 @@ export function PokerTableView({
                 {/* Game Status */}
                 <div className="text-center mt-3">
                   {tableInfo && (
-                    <div className="text-xs text-white/70 mb-1">
-                      ${ethToDollars(Number(ethers.formatEther(tableInfo.smallBlind))).toFixed(2)}/${ethToDollars(Number(ethers.formatEther(tableInfo.bigBlind))).toFixed(2)} Blinds
+                    <div>
+                      <div className="text-xs text-white/70 mb-1">
+                        ${ethToDollars(Number(ethers.formatEther(tableInfo.smallBlind))).toFixed(2)}/${ethToDollars(Number(ethers.formatEther(tableInfo.bigBlind))).toFixed(2)} Blinds
+                      </div>
+                      {gasFee && ethPrice && (
+                        <div className="text-xs text-amber-400 mb-2 bg-amber-900/20 px-2 py-1 rounded inline-block">
+                          Fee: ${ethToDollars(Number(ethers.formatEther(gasFee))).toFixed(2)}/hand
+                        </div>
+                      )}
                     </div>
                   )}
                   <div className="text-sm font-semibold text-white bg-purple-600/50 px-3 py-1 rounded-full inline-block">{stage.toUpperCase()}</div>

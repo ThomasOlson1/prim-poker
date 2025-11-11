@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { useEthPrice } from "@/hooks/use-poker-contract"
+import { useEthPrice, useCurrentGasFee } from "@/hooks/use-poker-contract"
 
 interface CreateGameModalProps {
   onClose: () => void
@@ -24,6 +24,7 @@ export function CreateGameModal({ onClose, onCreate, loading }: CreateGameModalP
   const [turnTimeMinutes, setTurnTimeMinutes] = useState(3)
   const [maxPlayers, setMaxPlayers] = useState(6)
   const { ethPrice } = useEthPrice()
+  const { gasFee } = useCurrentGasFee()
 
   // Convert dollar amount to ETH with proper rounding to avoid precision issues
   const dollarToEth = (dollars: number): number => {
@@ -146,6 +147,36 @@ export function CreateGameModal({ onClose, onCreate, loading }: CreateGameModalP
               </div>
             )}
           </div>
+
+          {/* Fee Breakdown */}
+          {gasFee && ethPrice && (
+            <div className="bg-amber-900/20 border border-amber-500/30 rounded-lg p-3">
+              <div className="text-xs font-semibold text-amber-300 mb-2">💰 Fee Structure (Per Hand)</div>
+              <div className="space-y-1 text-xs text-gray-300">
+                <div className="flex justify-between">
+                  <span>Blinds Posted:</span>
+                  <span className="text-white">${getBigBlind(blindLevel) * 1.5} ({blindLevel})</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Platform Fee:</span>
+                  <span className="text-amber-400">
+                    ${(Number(gasFee) / 1e18 * ethPrice).toFixed(2)}
+                    <span className="text-gray-500 ml-1">({(Number(gasFee) / 1e18).toFixed(6)} ETH)</span>
+                  </span>
+                </div>
+                <div className="border-t border-amber-500/20 my-1 pt-1"></div>
+                <div className="flex justify-between font-semibold">
+                  <span>To Pot:</span>
+                  <span className="text-green-400">
+                    ${(getBigBlind(blindLevel) * 1.5 - (Number(gasFee) / 1e18 * ethPrice)).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+              <div className="text-xs text-gray-400 mt-2 italic">
+                Fee covers gas + VRF + $0.20 markup
+              </div>
+            </div>
+          )}
 
           {/* Turn Time */}
           <div>

@@ -39,7 +39,6 @@ export class GameRoom {
   private gameId: string
   private wss: WebSocketServer
   private players: Map<string, Player>
-  private activeFids: Set<number> = new Set()  // Track Farcaster IDs to prevent multi-accounting
   private currentPlayer: string | null = null
   private turnTimer: TurnTimer | null = null
   private gameState: GameState
@@ -122,7 +121,6 @@ export class GameRoom {
         type: 'player-joined',
         gameId: this.gameId,
         address,
-        fid,  // Include FID in broadcast
         stack,
         timestamp: Date.now()
       })
@@ -684,7 +682,6 @@ export class GameRoom {
     this.players.forEach((player, address) => {
       players[address] = {
         address: player.address,
-        fid: player.fid,  // Include FID in game state
         stack: player.stack,
         bet: player.bet,
         folded: player.folded,

@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useWebSocket } from './use-websocket'
 import { useAccount } from 'wagmi'
-import { FarcasterService } from '@/lib/farcaster-service'
 
 export interface GameStateFromServer {
   gameId: string
@@ -40,27 +39,8 @@ export function useGameWebSocket(gameId: string | null) {
   useEffect(() => {
     if (!isConnected || !gameId || !address) return
 
-    // Get Farcaster user context for multi-account prevention
-    const subscribeWithFid = async () => {
-      try {
-        const farcasterUser = await FarcasterService.getUserContext()
-
-        if (!farcasterUser || !farcasterUser.fid) {
-          console.warn('⚠️  No Farcaster context available, subscribing without FID')
-          subscribe(gameId, address)
-          return
-        }
-
-        console.log('🎮 Subscribing to game:', gameId, 'with address:', address, 'FID:', farcasterUser.fid)
-        subscribe(gameId, address, farcasterUser.fid)
-      } catch (error) {
-        console.error('Failed to get Farcaster context:', error)
-        // Fallback to subscribing without FID
-        subscribe(gameId, address)
-      }
-    }
-
-    subscribeWithFid()
+    console.log('🎮 Subscribing to game:', gameId, 'with address:', address)
+    subscribe(gameId, address)
 
     return () => {
       console.log('🎮 Unsubscribing from game:', gameId)

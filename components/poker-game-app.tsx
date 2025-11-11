@@ -34,6 +34,9 @@ export function PokerGameApp() {
     try {
       // Check if contract address is configured
       const contractAddress = process.env.NEXT_PUBLIC_POKER_CONTRACT_ADDRESS
+      console.log("🔍 DEBUG: Contract address from env:", contractAddress)
+      console.log("🔍 DEBUG: All NEXT_PUBLIC env vars:", Object.keys(process.env).filter(k => k.startsWith('NEXT_PUBLIC')))
+
       if (!contractAddress) {
         toast({
           title: "⚠️ Setup Required",

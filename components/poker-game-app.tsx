@@ -6,6 +6,7 @@ import { GameLobby } from "./game-lobby"
 import { MyGamesScreen } from "./my-games-screen"
 import { CreateGameModal } from "./create-game-modal"
 import { useCreateTable, useEthPrice, useAllTables } from "@/hooks/use-poker-contract"
+import { usePlayerGames } from "@/hooks/use-player-games"
 import { useToast } from "@/hooks/use-toast"
 import { useAccount } from "wagmi"
 import { ethers } from "ethers"
@@ -19,6 +20,7 @@ export function PokerGameApp() {
   const { createTable, loading: creatingTable } = useCreateTable()
   const { ethPrice } = useEthPrice()
   const { games } = useAllTables()
+  const { games: playerGames } = usePlayerGames()
   const { toast } = useToast()
   const { address } = useAccount()
 
@@ -135,9 +137,14 @@ export function PokerGameApp() {
   return (
     <>
       {currentScreen === "game" && selectedGameId ? (
-        <PokerTableView gameId={selectedGameId} onLeaveGame={handleLeaveGame} onExit={handleLeaveGame} />
+        <PokerTableView
+          gameId={selectedGameId}
+          onLeaveGame={handleLeaveGame}
+          onExit={handleLeaveGame}
+          onJoinSuccess={() => setCurrentScreen("myGames")}
+        />
       ) : currentScreen === "myGames" ? (
-        <MyGamesScreen games={[]} onPlayGame={handlePlayGame} onNavigateHome={() => setCurrentScreen("home")} />
+        <MyGamesScreen games={playerGames} onPlayGame={handlePlayGame} onNavigateHome={() => setCurrentScreen("home")} />
       ) : (
         <GameLobby
           games={games}

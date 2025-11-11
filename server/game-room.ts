@@ -39,6 +39,7 @@ export class GameRoom {
   private gameId: string
   private wss: WebSocketServer
   private players: Map<string, Player>
+  private activeFids: Set<number> = new Set()
   private currentPlayer: string | null = null
   private turnTimer: TurnTimer | null = null
   private gameState: GameState
